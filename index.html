@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>ハイペリオンの休日 POC</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; background: #0b0b12; font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; }
+  .phone-frame {
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: linear-gradient(160deg, #0b0b12 0%, #15121f 60%, #1c1430 100%);
+    color: #f4f2ff;
+    position: relative;
+    overflow-x: hidden;
+  }
+  .tile {
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .tile:active { transform: scale(0.96); }
+  .glow-gold { box-shadow: 0 0 0 1px rgba(212,175,55,.35), 0 8px 24px rgba(0,0,0,.4); }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  @keyframes pulse-soft { 0%,100%{opacity:1;} 50%{opacity:.55;} }
+  .pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+  @keyframes stampPop { 0%{transform:scale(0);} 70%{transform:scale(1.15);} 100%{transform:scale(1);} }
+  .stamp-pop { animation: stampPop .35s ease-out; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react,typescript">
+const { useState, useMemo, useRef, useEffect } = React;
+
+/* ------------------------------------------------------------------ */
+/* Mock data (Honkai Impact 3rd 非公式ファンイベント「ハイペリオンの休日」POC) */
+/* ------------------------------------------------------------------ */
+
+const FACTIONS = [
+  { id: "red",   name: "紅陣営", sub: "灼熱の意志",   color: "#ef4444", emblem: "🔥" },
+  { id: "blue",  name: "蒼陣営", sub: "静寂の刃",     color: "#3b82f6", emblem: "❄️" },
+  { id: "green", name: "翠陣営", sub: "疾風の誓い",   color: "#22c55e", emblem: "⚡" },
+];
+
+const BOOTHS = [
+  "演奏ステージ", "フード・ドリンク", "グッズ販売", "交流企画コーナー",
+  "特典交換所", "クイズコーナー", "フォトスポット", "掲示板コーナー",
+];
+
+const QUIZ_QUESTIONS = [
+  {
+    q: "「ハイペリオンの休日」は何のゲームをテーマにした非公式ファンイベント？",
+    options: ["崩壊3rd", "原神", "崩壊：スターレイル", "ゼンレスゾーンゼロ"],
+    answer: 0,
+    explain: "「ハイペリオンの休日」は崩壊3rd愛好家による非公式オフラインイベントです。",
+  },
+  {
+    q: "参加を検討している人向けに用意されている交流ツールは？",
+    options: ["Slack", "Discord", "LINEオープンチャット", "Teams"],
+    answer: 1,
+    explain: "公式サイトから交流用Discordサーバーへの案内があります。一人参加でも安心です。",
+  },
+  {
+    q: "会場での特典交換に必要なものは？",
+    options: ["入場チケットのみ", "予約番号", "スタンプラリー達成コード", "特になし"],
+    answer: 2,
+    explain: "各ブースを周遊してスタンプを集めると表示される達成コードを受付で提示します。",
+  },
+];
+
+const EXHIBITORS = [
+  { name: "灯火工房",       desc: "ハンドメイドアクセサリー・缶バッジ" },
+  { name: "群青レコード",   desc: "オリジナルイラスト集・ポストカード" },
+  { name: "極東支部有志",   desc: "キャラクターアクリルスタンド" },
+  { name: "スタジオNova",   desc: "オリジナル楽曲CD・グッズ" },
+];
+
+const TIMETABLE = [
+  { time: "10:00", title: "開場",             desc: "会場受付開始" },
+  { time: "11:00", title: "生演奏スタート",     desc: "メインステージにて開始" },
+  { time: "13:00", title: "陣営バトル中間発表", desc: "スタンプラリー集計状況を発表" },
+  { time: "15:00", title: "極東支部交流イベント", desc: "交流企画コーナーにて開始" },
+  { time: "17:00", title: "閉会",             desc: "本日のイベントはこれで終了" },
+];
+
+const MENU_ITEMS = [
+  { id: "stamp",  label: "スタンプラリー", icon: "🗺️" },
+  { id: "quiz",   label: "クイズ",         icon: "❓" },
+  { id: "photo",  label: "フォトフレーム", icon: "📷" },
+  { id: "board",  label: "掲示板",         icon: "📌" },
+  { id: "map",    label: "会場マップ",     icon: "🏛️" },
+  { id: "exhibit",label: "出展者一覧",     icon: "🛍️" },
+  { id: "notify", label: "通知・タイムテーブル", icon: "🔔" },
+];
+
+/* ------------------------------------------------------------------ */
+/* Shared UI                                                          */
+/* ------------------------------------------------------------------ */
+
+function Header({ faction, stampCount, onHome, screen }) {
+  return (
+    <div className="sticky top-0 z-20 backdrop-blur bg-black/30 border-b border-white/10 px-4 py-3 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        {screen !== "home" && (
+          <button onClick={onHome} className="text-sm px-2 py-1 rounded-full bg-white/10 active:bg-white/20">
+            ← 戻る
+          </button>
+        )}
+        {screen === "home" && (
+          <span className="text-sm font-bold tracking-wide text-amber-300">ハイペリオンの休日</span>
+        )}
+      </div>
+      {faction && (
+        <div className="flex items-center gap-2 text-xs bg-white/5 rounded-full pl-2 pr-3 py-1"
+             style={{ boxShadow: `inset 0 0 0 1px ${faction.color}55` }}>
+          <span>{faction.emblem}</span>
+          <span style={{ color: faction.color }} className="font-semibold">{faction.name}</span>
+          <span className="text-white/40">|</span>
+          <span>🗺️ {stampCount}/{BOOTHS.length}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Tile({ icon, label, onClick, badge }) {
+  return (
+    <button
+      onClick={onClick}
+      className="tile glow-gold relative flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/5 border border-white/10 py-6 active:bg-white/10"
+    >
+      {badge ? (
+        <span className="absolute top-2 right-2 text-[10px] bg-amber-400 text-black font-bold rounded-full px-2 py-0.5">
+          {badge}
+        </span>
+      ) : null}
+      <span className="text-3xl">{icon}</span>
+      <span className="text-sm text-white/90">{label}</span>
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Onboarding                                                         */
+/* ------------------------------------------------------------------ */
+
+function Onboarding({ onComplete }) {
+  const [step, setStep] = useState(0); // 0: intro, 1: assigning, 2: result, 3: wallpaper
+  const [faction, setFaction] = useState(null);
+
+  const assign = () => {
+    setStep(1);
+    setTimeout(() => {
+      const picked = FACTIONS[Math.floor(Math.random() * FACTIONS.length)];
+      setFaction(picked);
+      setStep(2);
+    }, 900);
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-56px)] px-6 text-center gap-6">
+      {step === 0 && (
+        <>
+          <div className="text-5xl">🎐</div>
+          <h1 className="text-xl font-bold text-amber-300">ハイペリオンの休日 へようこそ</h1>
+          <p className="text-sm text-white/70 leading-relaxed">
+            崩壊3rd愛好家たちによる、崩壊3rd愛好家のための非公式ファンイベント。<br />
+            会場で使えるコンパニオンアプリのPOCです。
+          </p>
+          <button
+            onClick={assign}
+            className="mt-4 px-6 py-3 rounded-full bg-amber-400 text-black font-bold active:scale-95 transition"
+          >
+            陣営を割り当てる
+          </button>
+        </>
+      )}
+
+      {step === 1 && (
+        <div className="pulse-soft text-lg text-white/70">陣営を判定中…</div>
+      )}
+
+      {step === 2 && faction && (
+        <>
+          <div className="text-6xl stamp-pop">{faction.emblem}</div>
+          <h2 className="text-2xl font-extrabold" style={{ color: faction.color }}>
+            {faction.name}
+          </h2>
+          <p className="text-sm text-white/60">{faction.sub}</p>
+          <p className="text-xs text-white/50 leading-relaxed max-w-xs">
+            あなたはこの陣営の一員として、スタンプラリーの達成率で「陣営バトル」に貢献します。
+          </p>
+          <button
+            onClick={() => setStep(3)}
+            className="mt-4 px-6 py-3 rounded-full bg-white/10 border border-white/20 active:scale-95 transition"
+          >
+            限定壁紙を受け取る →
+          </button>
+        </>
+      )}
+
+      {step === 3 && faction && (
+        <>
+          <div
+            className="w-48 h-80 rounded-xl border border-white/20 flex flex-col items-center justify-center gap-3"
+            style={{ background: `linear-gradient(160deg, ${faction.color}33, #0b0b12 80%)` }}
+          >
+            <span className="text-5xl">{faction.emblem}</span>
+            <span className="text-sm font-bold" style={{ color: faction.color }}>{faction.name}</span>
+            <span className="text-[10px] text-white/40">限定壁紙（モック）</span>
+          </div>
+          <button
+            onClick={() => onComplete(faction)}
+            className="mt-4 px-6 py-3 rounded-full bg-amber-400 text-black font-bold active:scale-95 transition"
+          >
+            アプリを始める
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Stamp Rally                                                        */
+/* ------------------------------------------------------------------ */
+
+function StampRally({ faction, stamped, setStamped }) {
+  const toggle = (booth) => {
+    setStamped((prev) =>
+      prev.includes(booth) ? prev.filter((b) => b !== booth) : [...prev, booth]
+    );
+  };
+
+  const rate = Math.round((stamped.length / BOOTHS.length) * 100);
+
+  // ダミーの陣営バトル集計：自陣営は自分のスタンプ数を反映、他陣営はダミー値
+  const battleScores = useMemo(() => {
+    return FACTIONS.map((f) =>
+      f.id === faction.id
+        ? { ...f, score: stamped.length * 12 + 4 }
+        : { ...f, score: Math.floor(20 + Math.random() * 60) }
+    ).sort((a, b) => b.score - a.score);
+  }, [stamped.length, faction.id]);
+
+  return (
+    <div className="px-4 py-4 space-y-6">
+      <div>
+        <div className="flex justify-between text-xs text-white/60 mb-1">
+          <span>達成率</span>
+          <span>{stamped.length}/{BOOTHS.length}（{rate}%）</span>
+        </div>
+        <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+          <div className="h-full bg-amber-400 transition-all" style={{ width: `${rate}%` }} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {BOOTHS.map((booth) => {
+          const done = stamped.includes(booth);
+          return (
+            <button
+              key={booth}
+              onClick={() => toggle(booth)}
+              className={`rounded-xl border px-3 py-4 text-sm text-left transition ${
+                done
+                  ? "bg-amber-400/20 border-amber-400 text-amber-200"
+                  : "bg-white/5 border-white/10 text-white/70 active:bg-white/10"
+              }`}
+            >
+              <div className="text-xl mb-1">{done ? "✅" : "⬜"}</div>
+              {booth}
+            </button>
+          );
+        })}
+      </div>
+
+      {rate === 100 && (
+        <div className="rounded-xl bg-amber-400 text-black text-center py-3 font-bold stamp-pop">
+          特典コード: HYP-{faction.id.toUpperCase()}-7788<br />
+          <span className="text-xs font-normal">受付でこのコードを提示してください</span>
+        </div>
+      )}
+
+      <div>
+        <h3 className="text-sm font-bold text-white/80 mb-2">陣営バトル（速報・ダミー集計）</h3>
+        <div className="space-y-2">
+          {battleScores.map((f, i) => (
+            <div key={f.id} className="flex items-center gap-2 text-sm">
+              <span className="w-4 text-white/40">{i + 1}</span>
+              <span>{f.emblem}</span>
+              <span style={{ color: f.color }} className="w-16">{f.name}</span>
+              <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full" style={{ width: `${Math.min(f.score, 100)}%`, background: f.color }} />
+              </div>
+              <span className="w-8 text-right text-white/50 text-xs">{f.score}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Quiz                                                                */
+/* ------------------------------------------------------------------ */
+
+function Quiz() {
+  const [phase, setPhase] = useState("scan"); // scan -> question -> result
+  const [qIndex, setQIndex] = useState(0);
+  const [selected, setSelected] = useState(null);
+
+  const q = QUIZ_QUESTIONS[qIndex];
+
+  const scan = () => {
+    setPhase("question");
+    setSelected(null);
+  };
+
+  const choose = (i) => {
+    setSelected(i);
+    setPhase("result");
+  };
+
+  const next = () => {
+    setQIndex((i) => (i + 1) % QUIZ_QUESTIONS.length);
+    setPhase("scan");
+  };
+
+  return (
+    <div className="px-4 py-6 space-y-6 text-center">
+      {phase === "scan" && (
+        <>
+          <div className="text-5xl">📷</div>
+          <p className="text-sm text-white/60">会場に設置されたQRコードを読み取ってください（POCではボタンで代用）</p>
+          <button
+            onClick={scan}
+            className="px-6 py-3 rounded-full bg-amber-400 text-black font-bold active:scale-95 transition"
+          >
+            QRコードを読み取る（{qIndex + 1}問目）
+          </button>
+        </>
+      )}
+
+      {phase === "question" && (
+        <div className="text-left space-y-4">
+          <p className="text-sm font-bold text-white/90">{q.q}</p>
+          <div className="space-y-2">
+            {q.options.map((opt, i) => (
+              <button
+                key={i}
+                onClick={() => choose(i)}
+                className="w-full text-left rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm active:bg-white/10"
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {phase === "result" && (
+        <div className="text-left space-y-4">
+          <div
+            className={`rounded-xl px-4 py-3 text-sm font-bold ${
+              selected === q.answer ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300"
+            }`}
+          >
+            {selected === q.answer ? "正解！" : `不正解… 正解は「${q.options[q.answer]}」`}
+          </div>
+          <p className="text-xs text-white/60 leading-relaxed">{q.explain}</p>
+          <button
+            onClick={next}
+            className="w-full px-6 py-3 rounded-full bg-white/10 border border-white/20 active:scale-95 transition"
+          >
+            次の問題へ
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Photo Frame                                                        */
+/* ------------------------------------------------------------------ */
+
+function PhotoFrame({ faction }) {
+  const canvasRef = useRef(null);
+  const [imgSrc, setImgSrc] = useState(null);
+
+  const draw = (src) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const size = 320;
+    canvas.width = size;
+    canvas.height = size;
+
+    const paintFrame = () => {
+      ctx.strokeStyle = faction.color;
+      ctx.lineWidth = 10;
+      ctx.strokeRect(5, 5, size - 10, size - 10);
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillStyle = faction.color;
+      ctx.textAlign = "center";
+      ctx.fillText(`${faction.emblem} ${faction.name} ${faction.emblem}`, size / 2, size - 20);
+      ctx.font = "10px sans-serif";
+      ctx.fillStyle = "#ffffffaa";
+      ctx.fillText("ハイペリオンの休日", size / 2, 24);
+    };
+
+    if (src) {
+      const image = new Image();
+      image.onload = () => {
+        ctx.clearRect(0, 0, size, size);
+        ctx.drawImage(image, 20, 34, size - 40, size - 90);
+        paintFrame();
+      };
+      image.src = src;
+    } else {
+      ctx.fillStyle = "#1c1430";
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = "#ffffff33";
+      ctx.font = "14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("写真をアップロードしてください", size / 2, size / 2);
+      paintFrame();
+    }
+  };
+
+  useEffect(() => { draw(imgSrc); }, [imgSrc, faction]);
+
+  const onFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setImgSrc(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="px-4 py-6 flex flex-col items-center gap-4">
+      <canvas ref={canvasRef} className="rounded-lg shadow-lg" />
+      <label className="px-5 py-2 rounded-full bg-amber-400 text-black text-sm font-bold cursor-pointer active:scale-95 transition">
+        写真を選択
+        <input type="file" accept="image/*" className="hidden" onChange={onFile} />
+      </label>
+      <p className="text-[11px] text-white/40 text-center">
+        アップロードした写真はブラウザ内でのみ処理され、どこにも送信されません（POCではダウンロード機能は省略）
+      </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Board                                                               */
+/* ------------------------------------------------------------------ */
+
+function Board({ faction }) {
+  const [posts, setPosts] = useState([
+    { name: "運営", faction: null, text: "本日はご来場ありがとうございます！掲示板もぜひご活用ください。", time: "09:50" },
+    { name: "灯火工房", faction: "red", text: "ブースの新作アクセサリー、残りわずかです🔥", time: "11:20" },
+  ]);
+  const [text, setText] = useState("");
+
+  const post = () => {
+    if (!text.trim()) return;
+    setPosts((p) => [
+      { name: `${faction.name}の来場者`, faction: faction.id, text, time: "たった今" },
+      ...p,
+    ]);
+    setText("");
+  };
+
+  return (
+    <div className="px-4 py-4 flex flex-col h-[calc(100vh-56px)]">
+      <div className="flex-1 overflow-y-auto scrollbar-none space-y-3 pb-3">
+        {posts.map((p, i) => {
+          const f = FACTIONS.find((x) => x.id === p.faction);
+          return (
+            <div key={i} className="rounded-xl bg-white/5 border border-white/10 px-3 py-2">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span style={{ color: f ? f.color : "#d4af37" }} className="font-bold">
+                  {f ? f.emblem : "📣"} {p.name}
+                </span>
+                <span className="text-white/30">{p.time}</span>
+              </div>
+              <p className="text-sm text-white/85 leading-relaxed">{p.text}</p>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-2 pt-2 border-t border-white/10">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="ひとことメッセージを投稿…"
+          className="flex-1 rounded-full bg-white/10 px-4 py-2 text-sm outline-none placeholder-white/30"
+        />
+        <button onClick={post} className="px-4 py-2 rounded-full bg-amber-400 text-black text-sm font-bold active:scale-95 transition">
+          投稿
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Map / Exhibitors / Notify                                          */
+/* ------------------------------------------------------------------ */
+
+function VenueMap() {
+  return (
+    <div className="px-4 py-6 space-y-4">
+      <div className="rounded-xl border border-white/10 bg-white/5 aspect-square flex items-center justify-center text-white/30 text-sm">
+        会場マップ画像（プレースホルダー）
+      </div>
+      <p className="text-xs text-white/50 leading-relaxed">
+        本実装では外部の会場マップサイトへのリンクでも代替可能です（CLAUDE.md仕様どおり）。
+      </p>
+      <button className="w-full px-4 py-3 rounded-full bg-white/10 border border-white/20 text-sm active:scale-95 transition">
+        外部マップサイトを開く（モック）
+      </button>
+    </div>
+  );
+}
+
+function Exhibitors() {
+  return (
+    <div className="px-4 py-4 space-y-3">
+      {EXHIBITORS.map((e, i) => (
+        <div key={i} className="rounded-xl bg-white/5 border border-white/10 px-4 py-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-amber-400/20 flex items-center justify-center text-lg">🛍️</div>
+          <div>
+            <div className="text-sm font-bold text-white/90">{e.name}</div>
+            <div className="text-xs text-white/50">{e.desc}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Notify() {
+  return (
+    <div className="px-4 py-4 space-y-3">
+      {TIMETABLE.map((t, i) => (
+        <div key={i} className="flex gap-3">
+          <div className="text-xs text-amber-300 font-bold w-12 pt-1">{t.time}</div>
+          <div className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2">
+            <div className="text-sm font-bold text-white/90">{t.title}</div>
+            <div className="text-xs text-white/50">{t.desc}</div>
+          </div>
+        </div>
+      ))}
+      <p className="text-[11px] text-white/40 pt-2">
+        本実装ではタイムテーブルに合わせてプッシュ通知を送る想定（現在はモック表示のみ）。
+      </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Home                                                                */
+/* ------------------------------------------------------------------ */
+
+function Home({ onNavigate, stampCount }) {
+  return (
+    <div className="px-4 py-5">
+      <div className="grid grid-cols-2 gap-3">
+        {MENU_ITEMS.map((m) => (
+          <Tile
+            key={m.id}
+            icon={m.icon}
+            label={m.label}
+            onClick={() => onNavigate(m.id)}
+            badge={m.id === "stamp" && stampCount > 0 ? `${stampCount}` : null}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* App root                                                            */
+/* ------------------------------------------------------------------ */
+
+function App() {
+  const [faction, setFaction] = useState(null);
+  const [screen, setScreen] = useState("home");
+  const [stamped, setStamped] = useState([]);
+
+  if (!faction) {
+    return (
+      <div className="phone-frame">
+        <Onboarding onComplete={(f) => setFaction(f)} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="phone-frame">
+      <Header faction={faction} stampCount={stamped.length} onHome={() => setScreen("home")} screen={screen} />
+      {screen === "home" && <Home onNavigate={setScreen} stampCount={stamped.length} />}
+      {screen === "stamp" && <StampRally faction={faction} stamped={stamped} setStamped={setStamped} />}
+      {screen === "quiz" && <Quiz />}
+      {screen === "photo" && <PhotoFrame faction={faction} />}
+      {screen === "board" && <Board faction={faction} />}
+      {screen === "map" && <VenueMap />}
+      {screen === "exhibit" && <Exhibitors />}
+      {screen === "notify" && <Notify />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

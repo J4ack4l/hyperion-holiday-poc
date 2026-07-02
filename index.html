@@ -4,623 +4,725 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>ハイペリオンの休日 POC</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Murecho:wght@500;700;800;900&family=Noto+Sans+JP:wght@400;500;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
-  html, body { margin: 0; padding: 0; background: #0b0b12; font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; }
-  .phone-frame {
-    max-width: 430px;
-    margin: 0 auto;
-    min-height: 100vh;
-    background: linear-gradient(160deg, #0b0b12 0%, #15121f 60%, #1c1430 100%);
-    color: #f4f2ff;
-    position: relative;
-    overflow-x: hidden;
-  }
-  .tile {
-    transition: transform .15s ease, box-shadow .15s ease;
-  }
-  .tile:active { transform: scale(0.96); }
-  .glow-gold { box-shadow: 0 0 0 1px rgba(212,175,55,.35), 0 8px 24px rgba(0,0,0,.4); }
-  .scrollbar-none::-webkit-scrollbar { display: none; }
-  @keyframes pulse-soft { 0%,100%{opacity:1;} 50%{opacity:.55;} }
-  .pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
-  @keyframes stampPop { 0%{transform:scale(0);} 70%{transform:scale(1.15);} 100%{transform:scale(1);} }
-  .stamp-pop { animation: stampPop .35s ease-out; }
+  html, body { margin: 0; padding: 0; background: #DDE4EF; }
 </style>
 </head>
 <body>
 <div id="root"></div>
 
 <script type="text/babel" data-presets="react,typescript">
-const { useState, useMemo, useRef, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
-/* ------------------------------------------------------------------ */
-/* Mock data (Honkai Impact 3rd 非公式ファンイベント「ハイペリオンの休日」POC) */
-/* ------------------------------------------------------------------ */
+/**
+ * ハイペリオンの休日 — 会場アプリ クリックモック (PoC)
+ * 崩壊3rd 非公式オフラインイベント向け / 画面遷移確認用
+ *
+ * 仕様メモ:
+ *  - 全データはダミー。バックエンド無し（モック）。
+ *  - デザインは「ライトモード固定」。暗い背景は一切使わない。
+ *  - 3陣営カラー（蒼/緋/菫）でゲーム的に色分け。
+ *
+ * 出典: HyperionHoliday_AppMock.jsx（Claude Codeによる作成）を
+ *       CDN読込のみで動く単一HTMLへ移植したもの。
+ */
 
-const FACTIONS = [
-  { id: "red",   name: "紅陣営", sub: "灼熱の意志",   color: "#ef4444", emblem: "🔥" },
-  { id: "blue",  name: "蒼陣営", sub: "静寂の刃",     color: "#3b82f6", emblem: "❄️" },
-  { id: "green", name: "翠陣営", sub: "疾風の誓い",   color: "#22c55e", emblem: "⚡" },
-];
+// ------- デザイントークン -------
+const INK = "#1B2230";
+const SUB = "#5C667A";
+const LINE = "#E4E9F1";
+const BG = "#EEF2F8";
+const PANEL = "#FFFFFF";
+const GOLD = "#E0A02E";
 
+const FACTIONS = {
+  azure: { id: "azure", name: "蒼の陣営", code: "VANGUARD", color: "#2E6BE6", tint: "#E8F0FE", glyph: "❖" },
+  crimson: { id: "crimson", name: "緋の陣営", code: "IGNITE", color: "#E0334B", tint: "#FCE9EC", glyph: "✦" },
+  violet: { id: "violet", name: "菫の陣営", code: "PROJECT-B", color: "#7C4DE0", tint: "#F0EAFC", glyph: "✧" },
+};
+const FACTION_LIST = [FACTIONS.azure, FACTIONS.crimson, FACTIONS.violet];
+
+// ------- ダミーデータ -------
 const BOOTHS = [
-  "演奏ステージ", "フード・ドリンク", "グッズ販売", "交流企画コーナー",
-  "特典交換所", "クイズコーナー", "フォトスポット", "掲示板コーナー",
+  { id: 1, name: "受付ゲート", icon: "🎫" },
+  { id: 2, name: "メインステージ", icon: "🎤" },
+  { id: 3, name: "物販エリア", icon: "🛍️" },
+  { id: 4, name: "フォトスポット", icon: "📸" },
+  { id: 5, name: "ファンアート展", icon: "🎨" },
+  { id: 6, name: "コスプレ広場", icon: "✨" },
+  { id: 7, name: "休憩ラウンジ", icon: "☕" },
+  { id: 8, name: "出口記念", icon: "🏁" },
 ];
 
-const QUIZ_QUESTIONS = [
-  {
-    q: "「ハイペリオンの休日」は何のゲームをテーマにした非公式ファンイベント？",
-    options: ["崩壊3rd", "原神", "崩壊：スターレイル", "ゼンレスゾーンゼロ"],
-    answer: 0,
-    explain: "「ハイペリオンの休日」は崩壊3rd愛好家による非公式オフラインイベントです。",
-  },
-  {
-    q: "参加を検討している人向けに用意されている交流ツールは？",
-    options: ["Slack", "Discord", "LINEオープンチャット", "Teams"],
-    answer: 1,
-    explain: "公式サイトから交流用Discordサーバーへの案内があります。一人参加でも安心です。",
-  },
-  {
-    q: "会場での特典交換に必要なものは？",
-    options: ["入場チケットのみ", "予約番号", "スタンプラリー達成コード", "特になし"],
-    answer: 2,
-    explain: "各ブースを周遊してスタンプを集めると表示される達成コードを受付で提示します。",
-  },
-];
+const QUIZ = {
+  q: "「ハイペリオンの休日」の交流を検討している方向けに用意されているツールは？",
+  options: ["Slack", "Discord", "LINEオープンチャット", "Teams"],
+  answer: 1,
+  explain: "正解は「Discord」。一人参加でも安心できるよう、公式サイトから交流用Discordサーバーへの案内があります。",
+};
 
 const EXHIBITORS = [
-  { name: "灯火工房",       desc: "ハンドメイドアクセサリー・缶バッジ" },
-  { name: "群青レコード",   desc: "オリジナルイラスト集・ポストカード" },
-  { name: "極東支部有志",   desc: "キャラクターアクリルスタンド" },
-  { name: "スタジオNova",   desc: "オリジナル楽曲CD・グッズ" },
+  { id: 1, name: "studio NOVA", genre: "アクリルスタンド", color: "#2E6BE6" },
+  { id: 2, name: "緋色工房", genre: "イラスト集 / 缶バッジ", color: "#E0334B" },
+  { id: 3, name: "Lavender Works", genre: "刺繍ワッペン", color: "#7C4DE0" },
+  { id: 4, name: "Hyperion Goods", genre: "ステッカー / キーホルダー", color: "#E0A02E" },
 ];
 
-const TIMETABLE = [
-  { time: "10:00", title: "開場",             desc: "会場受付開始" },
-  { time: "11:00", title: "生演奏スタート",     desc: "メインステージにて開始" },
-  { time: "13:00", title: "陣営バトル中間発表", desc: "スタンプラリー集計状況を発表" },
-  { time: "15:00", title: "極東支部交流イベント", desc: "交流企画コーナーにて開始" },
-  { time: "17:00", title: "閉会",             desc: "本日のイベントはこれで終了" },
+const SCHEDULE = [
+  { t: "11:00", title: "開場・受付開始", spot: "受付ゲート", soon: false },
+  { t: "12:30", title: "オープニングトーク", spot: "メインステージ", soon: true },
+  { t: "14:00", title: "陣営バトル 中間発表", spot: "メインステージ", soon: false },
+  { t: "15:30", title: "コスプレ撮影会", spot: "コスプレ広場", soon: false },
+  { t: "17:00", title: "陣営バトル 結果発表", spot: "メインステージ", soon: false },
+  { t: "17:30", title: "クロージング", spot: "メインステージ", soon: false },
 ];
 
-const MENU_ITEMS = [
-  { id: "stamp",  label: "スタンプラリー", icon: "🗺️" },
-  { id: "quiz",   label: "クイズ",         icon: "❓" },
-  { id: "photo",  label: "フォトフレーム", icon: "📷" },
-  { id: "board",  label: "掲示板",         icon: "📌" },
-  { id: "map",    label: "会場マップ",     icon: "🏛️" },
-  { id: "exhibit",label: "出展者一覧",     icon: "🛍️" },
-  { id: "notify", label: "通知・タイムテーブル", icon: "🔔" },
+const BOARD = [
+  { id: 1, who: "あおい", body: "蒼陣営、一緒にスタンプ集めましょ〜！受付前にいます🩵", faction: "azure" },
+  { id: 2, who: "れん", body: "物販エリアのアクスタ完売しそう、お早めに！", faction: "crimson" },
+  { id: 3, who: "みやび", body: "フォトスポットのフレーム可愛すぎる📸", faction: "violet" },
 ];
 
-/* ------------------------------------------------------------------ */
-/* Shared UI                                                          */
-/* ------------------------------------------------------------------ */
+const WALLPAPERS = [
+  { id: 1, label: "蒼 / Vanguard", from: "#3B7BF0", to: "#7FB0FF" },
+  { id: 2, label: "緋 / Ignite", from: "#E0334B", to: "#FF8A8A" },
+  { id: 3, label: "菫 / Project-B", from: "#7C4DE0", to: "#B79CF5" },
+  { id: 4, label: "限定 / Hyperion", from: "#E0A02E", to: "#F7D27A" },
+];
 
-function Header({ faction, stampCount, onHome, screen }) {
+const FRAMES = [
+  { id: 1, label: "陣営カラー枠", color: "#2E6BE6" },
+  { id: 2, label: "イベントロゴ枠", color: "#E0A02E" },
+  { id: 3, label: "星屑フレーム", color: "#7C4DE0" },
+];
+
+// ------- 小物 -------
+function Chip({ children, color = INK, bg = "#F1F4FA" }) {
   return (
-    <div className="sticky top-0 z-20 backdrop-blur bg-black/30 border-b border-white/10 px-4 py-3 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        {screen !== "home" && (
-          <button onClick={onHome} className="text-sm px-2 py-1 rounded-full bg-white/10 active:bg-white/20">
-            ← 戻る
-          </button>
-        )}
-        {screen === "home" && (
-          <span className="text-sm font-bold tracking-wide text-amber-300">ハイペリオンの休日</span>
-        )}
-      </div>
-      {faction && (
-        <div className="flex items-center gap-2 text-xs bg-white/5 rounded-full pl-2 pr-3 py-1"
-             style={{ boxShadow: `inset 0 0 0 1px ${faction.color}55` }}>
-          <span>{faction.emblem}</span>
-          <span style={{ color: faction.color }} className="font-semibold">{faction.name}</span>
-          <span className="text-white/40">|</span>
-          <span>🗺️ {stampCount}/{BOOTHS.length}</span>
-        </div>
-      )}
+    <span style={{ fontSize: 11, fontWeight: 700, color, background: bg, padding: "3px 9px", borderRadius: 999, letterSpacing: ".02em" }}>
+      {children}
+    </span>
+  );
+}
+
+function SectionTitle({ children, sub }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div className="hp-disp" style={{ fontSize: 19, fontWeight: 800, color: INK, letterSpacing: ".01em" }}>{children}</div>
+      {sub && <div style={{ fontSize: 12.5, color: SUB, marginTop: 3 }}>{sub}</div>}
     </div>
   );
 }
 
-function Tile({ icon, label, onClick, badge }) {
+function Card({ children, style }) {
   return (
-    <button
-      onClick={onClick}
-      className="tile glow-gold relative flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/5 border border-white/10 py-6 active:bg-white/10"
-    >
-      {badge ? (
-        <span className="absolute top-2 right-2 text-[10px] bg-amber-400 text-black font-bold rounded-full px-2 py-0.5">
-          {badge}
-        </span>
-      ) : null}
-      <span className="text-3xl">{icon}</span>
-      <span className="text-sm text-white/90">{label}</span>
-    </button>
+    <div style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: 16, boxShadow: "0 6px 18px rgba(27,34,48,.05)", ...style }}>
+      {children}
+    </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Onboarding                                                         */
-/* ------------------------------------------------------------------ */
-
-function Onboarding({ onComplete }) {
-  const [step, setStep] = useState(0); // 0: intro, 1: assigning, 2: result, 3: wallpaper
+// ===================================================================
+function HyperionHolidayMock() {
+  const [screen, setScreen] = useState("onboard"); // onboard | home | rally | battle | map | menu | quiz | frame | board | schedule | exhibitors | wallpaper
   const [faction, setFaction] = useState(null);
 
+  const goHome = (f) => { setFaction(f); setScreen("home"); };
+
+  return (
+    <div style={{ minHeight: "100vh", width: "100%", display: "flex", alignItems: "flex-start", justifyContent: "center", background: "#DDE4EF", padding: "20px 12px", boxSizing: "border-box", fontFamily: "'Noto Sans JP', sans-serif", color: INK }}>
+      <style>{`
+        .hp-disp{ font-family:'Murecho','Noto Sans JP',sans-serif; }
+        .hp-hud{ font-family:'Orbitron','Murecho',sans-serif; letter-spacing:.06em; }
+        @keyframes hpUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+        @keyframes hpPop{ 0%{transform:scale(.4); opacity:0;} 60%{transform:scale(1.12);} 100%{transform:scale(1); opacity:1;} }
+        @keyframes hpScan{ 0%,100%{opacity:.35;} 50%{opacity:1;} }
+        @keyframes hpBar{ from{width:0;} }
+        @keyframes hpFloat{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-5px);} }
+        .hp-screen{ animation:hpUp .32s ease both; }
+        .hp-tap:active{ transform:scale(.97); }
+        .hp-scroll::-webkit-scrollbar{ width:0; }
+      `}</style>
+
+      {/* デバイスフレーム（ライト） */}
+      <div style={{ width: "100%", maxWidth: 392, height: "min(840px, 93vh)", background: "#F4F7FC", borderRadius: 30, border: `1px solid #CBD4E2`, boxShadow: "0 24px 60px rgba(27,34,48,.22)", overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
+
+        {/* PoCリボン */}
+        <div style={{ position: "absolute", top: 12, right: -34, transform: "rotate(38deg)", background: GOLD, color: "#fff", fontSize: 10, fontWeight: 800, padding: "3px 36px", zIndex: 50, letterSpacing: ".08em" }} className="hp-hud">MOCK</div>
+
+        {screen === "onboard"
+          ? <Onboard onDone={goHome} />
+          : (
+            <>
+              <TopBar faction={faction} screen={screen} />
+              <main className="hp-scroll" style={{ flex: 1, overflowY: "auto", padding: "16px 16px 24px" }}>
+                <ScreenRouter screen={screen} setScreen={setScreen} faction={faction} setFaction={setFaction} />
+              </main>
+              <TabBar screen={screen} setScreen={setScreen} faction={faction} />
+            </>
+          )}
+      </div>
+    </div>
+  );
+}
+
+// ------- 上部バー -------
+function TopBar({ faction, screen }) {
+  const f = faction || FACTIONS.azure;
+  const titles = {
+    home: "ホーム", rally: "スタンプラリー", battle: "陣営バトル", map: "会場マップ",
+    menu: "メニュー", quiz: "クイズ", frame: "フォトフレーム", board: "掲示板",
+    schedule: "タイムテーブル", exhibitors: "出展者", wallpaper: "限定壁紙",
+  };
+  return (
+    <header style={{ background: PANEL, borderBottom: `1px solid ${LINE}`, padding: "12px 16px 11px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div>
+        <div className="hp-hud" style={{ fontSize: 10, color: SUB }}>HYPERION HOLIDAY</div>
+        <div className="hp-disp" style={{ fontSize: 17, fontWeight: 800 }}>{titles[screen] || ""}</div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, background: f.tint, border: `1px solid ${f.color}33`, padding: "5px 10px", borderRadius: 999 }}>
+        <span style={{ color: f.color, fontSize: 14 }}>{f.glyph}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: f.color }}>{f.name}</span>
+      </div>
+    </header>
+  );
+}
+
+// ------- 下部タブ -------
+function TabBar({ screen, setScreen, faction }) {
+  const f = faction || FACTIONS.azure;
+  const tabs = [
+    { id: "home", label: "ホーム", icon: "⌂" },
+    { id: "rally", label: "ラリー", icon: "◉" },
+    { id: "battle", label: "バトル", icon: "⚔" },
+    { id: "map", label: "マップ", icon: "🗺" },
+    { id: "menu", label: "メニュー", icon: "☰" },
+  ];
+  return (
+    <nav style={{ background: PANEL, borderTop: `1px solid ${LINE}`, display: "flex", padding: "7px 4px 9px" }}>
+      {tabs.map((t) => {
+        const active = screen === t.id || (t.id === "menu" && ["quiz", "frame", "board", "schedule", "exhibitors", "wallpaper"].includes(screen));
+        return (
+          <button key={t.id} onClick={() => setScreen(t.id)} className="hp-tap"
+            style={{ flex: 1, border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", color: active ? f.color : "#9AA4B6", transition: "color .15s" }}>
+            <span style={{ fontSize: 17, lineHeight: 1 }}>{t.icon}</span>
+            <span style={{ fontSize: 10.5, fontWeight: active ? 800 : 600 }}>{t.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+// ------- ルーター -------
+function ScreenRouter({ screen, setScreen, faction, setFaction }) {
+  const f = faction || FACTIONS.azure;
+  switch (screen) {
+    case "home": return <Home key="home" f={f} setScreen={setScreen} />;
+    case "rally": return <Rally key="rally" f={f} />;
+    case "battle": return <Battle key="battle" f={f} />;
+    case "map": return <MapScreen key="map" f={f} />;
+    case "menu": return <Menu key="menu" f={f} setScreen={setScreen} setFaction={setFaction} />;
+    case "quiz": return <Quiz key="quiz" f={f} />;
+    case "frame": return <Frame key="frame" f={f} />;
+    case "board": return <Board key="board" f={f} />;
+    case "schedule": return <Schedule key="schedule" f={f} />;
+    case "exhibitors": return <Exhibitors key="exhibitors" f={f} />;
+    case "wallpaper": return <Wallpaper key="wallpaper" f={f} />;
+    default: return null;
+  }
+}
+
+// ===================== 入口: 陣営割り当て =====================
+function Onboard({ onDone }) {
+  const [phase, setPhase] = useState("intro"); // intro | scanning | result
+  const [picked, setPicked] = useState(null);
+
   const assign = () => {
-    setStep(1);
+    setPhase("scanning");
     setTimeout(() => {
-      const picked = FACTIONS[Math.floor(Math.random() * FACTIONS.length)];
-      setFaction(picked);
-      setStep(2);
-    }, 900);
+      const f = FACTION_LIST[Math.floor(Math.random() * 3)];
+      setPicked(f);
+      setPhase("result");
+    }, 1600);
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-56px)] px-6 text-center gap-6">
-      {step === 0 && (
+    <div className="hp-screen" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 26, textAlign: "center", background: phase === "result" && picked ? picked.tint : "#F4F7FC", transition: "background .5s" }}>
+      <div className="hp-hud" style={{ fontSize: 11, color: SUB, marginBottom: 6 }}>HYPERION HOLIDAY · 非公式オフラインイベント</div>
+
+      {phase === "intro" && (
         <>
-          <div className="text-5xl">🎐</div>
-          <h1 className="text-xl font-bold text-amber-300">ハイペリオンの休日 へようこそ</h1>
-          <p className="text-sm text-white/70 leading-relaxed">
-            崩壊3rd愛好家たちによる、崩壊3rd愛好家のための非公式ファンイベント。<br />
-            会場で使えるコンパニオンアプリのPOCです。
-          </p>
-          <button
-            onClick={assign}
-            className="mt-4 px-6 py-3 rounded-full bg-amber-400 text-black font-bold active:scale-95 transition"
-          >
-            陣営を割り当てる
-          </button>
+          <div style={{ fontSize: 54, marginBottom: 8, animation: "hpFloat 3s ease-in-out infinite" }}>🛰️</div>
+          <div className="hp-disp" style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.3, marginBottom: 10 }}>ようこそ、<br />ハイペリオンへ</div>
+          <p style={{ fontSize: 13.5, color: SUB, lineHeight: 1.7, maxWidth: 270, marginBottom: 28 }}>来場するとあなたの陣営が決まります。仲間とスタンプを集めて、陣営バトルを勝ち抜こう。</p>
+          <button onClick={assign} className="hp-tap" style={{ background: FACTIONS.azure.color, color: "#fff", border: "none", borderRadius: 14, padding: "15px 40px", fontSize: 15.5, fontWeight: 800, cursor: "pointer", boxShadow: "0 10px 24px rgba(46,107,230,.3)" }}>陣営を割り当てる</button>
         </>
       )}
 
-      {step === 1 && (
-        <div className="pulse-soft text-lg text-white/70">陣営を判定中…</div>
-      )}
-
-      {step === 2 && faction && (
+      {phase === "scanning" && (
         <>
-          <div className="text-6xl stamp-pop">{faction.emblem}</div>
-          <h2 className="text-2xl font-extrabold" style={{ color: faction.color }}>
-            {faction.name}
-          </h2>
-          <p className="text-sm text-white/60">{faction.sub}</p>
-          <p className="text-xs text-white/50 leading-relaxed max-w-xs">
-            あなたはこの陣営の一員として、スタンプラリーの達成率で「陣営バトル」に貢献します。
-          </p>
-          <button
-            onClick={() => setStep(3)}
-            className="mt-4 px-6 py-3 rounded-full bg-white/10 border border-white/20 active:scale-95 transition"
-          >
-            限定壁紙を受け取る →
-          </button>
-        </>
-      )}
-
-      {step === 3 && faction && (
-        <>
-          <div
-            className="w-48 h-80 rounded-xl border border-white/20 flex flex-col items-center justify-center gap-3"
-            style={{ background: `linear-gradient(160deg, ${faction.color}33, #0b0b12 80%)` }}
-          >
-            <span className="text-5xl">{faction.emblem}</span>
-            <span className="text-sm font-bold" style={{ color: faction.color }}>{faction.name}</span>
-            <span className="text-[10px] text-white/40">限定壁紙（モック）</span>
+          <div style={{ fontSize: 56, marginBottom: 16, animation: "hpScan 1s ease-in-out infinite" }}>📡</div>
+          <div className="hp-hud" style={{ fontSize: 15, fontWeight: 800, color: INK }}>SCANNING...</div>
+          <div style={{ fontSize: 13, color: SUB, marginTop: 8 }}>あなたの適性を解析しています</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 22 }}>
+            {FACTION_LIST.map((x, i) => (
+              <span key={x.id} style={{ width: 14, height: 14, borderRadius: 999, background: x.color, animation: "hpScan 1s ease-in-out infinite", animationDelay: `${i * .2}s` }} />
+            ))}
           </div>
-          <button
-            onClick={() => onComplete(faction)}
-            className="mt-4 px-6 py-3 rounded-full bg-amber-400 text-black font-bold active:scale-95 transition"
-          >
-            アプリを始める
-          </button>
         </>
+      )}
+
+      {phase === "result" && picked && (
+        <div style={{ animation: "hpPop .5s ease both" }}>
+          <div className="hp-hud" style={{ fontSize: 11, color: picked.color, letterSpacing: ".12em", marginBottom: 4 }}>YOUR FACTION</div>
+          <div style={{ fontSize: 60, color: picked.color, marginBottom: 4 }}>{picked.glyph}</div>
+          <div className="hp-disp" style={{ fontSize: 30, fontWeight: 900, color: picked.color }}>{picked.name}</div>
+          <div className="hp-hud" style={{ fontSize: 12, color: SUB, marginTop: 4, marginBottom: 26 }}>{picked.code}</div>
+          <button onClick={() => onDone(picked)} className="hp-tap" style={{ background: picked.color, color: "#fff", border: "none", borderRadius: 14, padding: "14px 44px", fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: `0 10px 24px ${picked.color}44` }}>はじめる →</button>
+        </div>
       )}
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Stamp Rally                                                        */
-/* ------------------------------------------------------------------ */
-
-function StampRally({ faction, stamped, setStamped }) {
-  const toggle = (booth) => {
-    setStamped((prev) =>
-      prev.includes(booth) ? prev.filter((b) => b !== booth) : [...prev, booth]
-    );
-  };
-
-  const rate = Math.round((stamped.length / BOOTHS.length) * 100);
-
-  // ダミーの陣営バトル集計：自陣営は自分のスタンプ数を反映、他陣営はダミー値
-  const battleScores = useMemo(() => {
-    return FACTIONS.map((f) =>
-      f.id === faction.id
-        ? { ...f, score: stamped.length * 12 + 4 }
-        : { ...f, score: Math.floor(20 + Math.random() * 60) }
-    ).sort((a, b) => b.score - a.score);
-  }, [stamped.length, faction.id]);
-
+// ===================== ホーム =====================
+function Home({ f, setScreen }) {
+  const quick = [
+    { id: "rally", label: "スタンプラリー", icon: "◉", desc: "あと3個でコンプ" },
+    { id: "battle", label: "陣営バトル", icon: "⚔", desc: "蒼が首位！" },
+    { id: "quiz", label: "クイズに挑戦", icon: "❓", desc: "QRを読み取る" },
+    { id: "wallpaper", label: "限定壁紙", icon: "🖼", desc: "4種 配布中" },
+  ];
   return (
-    <div className="px-4 py-4 space-y-6">
-      <div>
-        <div className="flex justify-between text-xs text-white/60 mb-1">
-          <span>達成率</span>
-          <span>{stamped.length}/{BOOTHS.length}（{rate}%）</span>
-        </div>
-        <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-          <div className="h-full bg-amber-400 transition-all" style={{ width: `${rate}%` }} />
+    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* 陣営カード */}
+      <div style={{ background: f.tint, border: `1px solid ${f.color}33`, borderRadius: 18, padding: 16, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", right: -8, top: -10, fontSize: 88, opacity: .12, color: f.color }}>{f.glyph}</div>
+        <div className="hp-hud" style={{ fontSize: 10, color: f.color }}>{f.code}</div>
+        <div className="hp-disp" style={{ fontSize: 23, fontWeight: 900, color: f.color, margin: "2px 0 10px" }}>{f.name}</div>
+        <div style={{ display: "flex", gap: 18 }}>
+          <Stat label="獲得スタンプ" value="5" unit="/8" color={f.color} />
+          <Stat label="貢献ポイント" value="120" unit="pt" color={f.color} />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {BOOTHS.map((booth) => {
-          const done = stamped.includes(booth);
-          return (
-            <button
-              key={booth}
-              onClick={() => toggle(booth)}
-              className={`rounded-xl border px-3 py-4 text-sm text-left transition ${
-                done
-                  ? "bg-amber-400/20 border-amber-400 text-amber-200"
-                  : "bg-white/5 border-white/10 text-white/70 active:bg-white/10"
-              }`}
-            >
-              <div className="text-xl mb-1">{done ? "✅" : "⬜"}</div>
-              {booth}
+      {/* 限定壁紙バナー */}
+      <div onClick={() => setScreen("wallpaper")} className="hp-tap" style={{ cursor: "pointer", borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, background: "linear-gradient(100deg,#FBEFD3,#FFF6E6)", border: `1px solid ${GOLD}33` }}>
+        <span style={{ fontSize: 26 }}>🎁</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 800 }}>限定壁紙を配布中</div>
+          <div style={{ fontSize: 12, color: SUB }}>来場特典の4種をダウンロード</div>
+        </div>
+        <span style={{ color: GOLD, fontWeight: 800 }}>›</span>
+      </div>
+
+      {/* クイックアクション */}
+      <div>
+        <SectionTitle>できること</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {quick.map((q) => (
+            <button key={q.id} onClick={() => setScreen(q.id)} className="hp-tap" style={{ textAlign: "left", cursor: "pointer", background: PANEL, border: `1px solid ${LINE}`, borderRadius: 14, padding: 13 }}>
+              <div style={{ fontSize: 20, marginBottom: 6 }}>{q.icon}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 800 }}>{q.label}</div>
+              <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>{q.desc}</div>
             </button>
-          );
-        })}
-      </div>
-
-      {rate === 100 && (
-        <div className="rounded-xl bg-amber-400 text-black text-center py-3 font-bold stamp-pop">
-          特典コード: HYP-{faction.id.toUpperCase()}-7788<br />
-          <span className="text-xs font-normal">受付でこのコードを提示してください</span>
-        </div>
-      )}
-
-      <div>
-        <h3 className="text-sm font-bold text-white/80 mb-2">陣営バトル（速報・ダミー集計）</h3>
-        <div className="space-y-2">
-          {battleScores.map((f, i) => (
-            <div key={f.id} className="flex items-center gap-2 text-sm">
-              <span className="w-4 text-white/40">{i + 1}</span>
-              <span>{f.emblem}</span>
-              <span style={{ color: f.color }} className="w-16">{f.name}</span>
-              <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
-                <div className="h-full" style={{ width: `${Math.min(f.score, 100)}%`, background: f.color }} />
-              </div>
-              <span className="w-8 text-right text-white/50 text-xs">{f.score}</span>
-            </div>
           ))}
         </div>
       </div>
+
+      {/* 次の予定 */}
+      <div>
+        <SectionTitle sub="タイムテーブルに合わせて通知が届きます">次の予定</SectionTitle>
+        <Card style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="hp-hud" style={{ fontSize: 16, fontWeight: 800, color: f.color }}>12:30</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>オープニングトーク</div>
+            <div style={{ fontSize: 11.5, color: SUB }}>メインステージ</div>
+          </div>
+          <Chip color={f.color} bg={f.tint}>まもなく</Chip>
+        </Card>
+      </div>
+    </div>
+  );
+}
+function Stat({ label, value, unit, color }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: SUB, marginBottom: 1 }}>{label}</div>
+      <div><span className="hp-hud" style={{ fontSize: 22, fontWeight: 800, color }}>{value}</span><span style={{ fontSize: 12, color: SUB, marginLeft: 2 }}>{unit}</span></div>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Quiz                                                                */
-/* ------------------------------------------------------------------ */
+// ===================== スタンプラリー =====================
+function Rally({ f }) {
+  const [collected, setCollected] = useState({ 1: true, 2: true, 3: true, 5: true, 6: true });
+  const [reward, setReward] = useState(false);
+  const count = Object.values(collected).filter(Boolean).length;
+  const pct = Math.round((count / BOOTHS.length) * 100);
 
-function Quiz() {
-  const [phase, setPhase] = useState("scan"); // scan -> question -> result
-  const [qIndex, setQIndex] = useState(0);
-  const [selected, setSelected] = useState(null);
-
-  const q = QUIZ_QUESTIONS[qIndex];
-
+  const next = BOOTHS.find((b) => !collected[b.id]);
   const scan = () => {
-    setPhase("question");
-    setSelected(null);
-  };
-
-  const choose = (i) => {
-    setSelected(i);
-    setPhase("result");
-  };
-
-  const next = () => {
-    setQIndex((i) => (i + 1) % QUIZ_QUESTIONS.length);
-    setPhase("scan");
+    if (!next) return;
+    setCollected((c) => ({ ...c, [next.id]: true }));
   };
 
   return (
-    <div className="px-4 py-6 space-y-6 text-center">
-      {phase === "scan" && (
-        <>
-          <div className="text-5xl">📷</div>
-          <p className="text-sm text-white/60">会場に設置されたQRコードを読み取ってください（POCではボタンで代用）</p>
-          <button
-            onClick={scan}
-            className="px-6 py-3 rounded-full bg-amber-400 text-black font-bold active:scale-95 transition"
-          >
-            QRコードを読み取る（{qIndex + 1}問目）
-          </button>
-        </>
-      )}
-
-      {phase === "question" && (
-        <div className="text-left space-y-4">
-          <p className="text-sm font-bold text-white/90">{q.q}</p>
-          <div className="space-y-2">
-            {q.options.map((opt, i) => (
-              <button
-                key={i}
-                onClick={() => choose(i)}
-                className="w-full text-left rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm active:bg-white/10"
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
+    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card style={{ padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>達成率</div>
+          <div><span className="hp-hud" style={{ fontSize: 26, fontWeight: 800, color: f.color }}>{count}</span><span style={{ color: SUB, fontSize: 14 }}> / {BOOTHS.length}</span></div>
         </div>
-      )}
-
-      {phase === "result" && (
-        <div className="text-left space-y-4">
-          <div
-            className={`rounded-xl px-4 py-3 text-sm font-bold ${
-              selected === q.answer ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300"
-            }`}
-          >
-            {selected === q.answer ? "正解！" : `不正解… 正解は「${q.options[q.answer]}」`}
-          </div>
-          <p className="text-xs text-white/60 leading-relaxed">{q.explain}</p>
-          <button
-            onClick={next}
-            className="w-full px-6 py-3 rounded-full bg-white/10 border border-white/20 active:scale-95 transition"
-          >
-            次の問題へ
-          </button>
+        <div style={{ height: 10, background: "#EEF1F7", borderRadius: 999, overflow: "hidden" }}>
+          <div style={{ width: `${pct}%`, height: "100%", background: f.color, borderRadius: 999, transition: "width .5s" }} />
         </div>
-      )}
-    </div>
-  );
-}
+        <div style={{ fontSize: 12, color: SUB, marginTop: 8 }}>集めたスタンプは陣営バトルの集計に反映されます。コンプリートで特典コードを受け取れます。</div>
+      </Card>
 
-/* ------------------------------------------------------------------ */
-/* Photo Frame                                                        */
-/* ------------------------------------------------------------------ */
+      <button onClick={count === BOOTHS.length ? () => setReward(true) : scan} className="hp-tap"
+        style={{ border: "none", cursor: "pointer", borderRadius: 14, padding: "15px", fontSize: 15, fontWeight: 800, color: "#fff", background: count === BOOTHS.length ? GOLD : f.color, boxShadow: `0 8px 20px ${(count === BOOTHS.length ? GOLD : f.color)}40` }}>
+        {count === BOOTHS.length ? "🎉 特典コードを表示" : `📷 QRを読み取る（${next ? next.name : ""}）`}
+      </button>
 
-function PhotoFrame({ faction }) {
-  const canvasRef = useRef(null);
-  const [imgSrc, setImgSrc] = useState(null);
-
-  const draw = (src) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const size = 320;
-    canvas.width = size;
-    canvas.height = size;
-
-    const paintFrame = () => {
-      ctx.strokeStyle = faction.color;
-      ctx.lineWidth = 10;
-      ctx.strokeRect(5, 5, size - 10, size - 10);
-      ctx.font = "bold 16px sans-serif";
-      ctx.fillStyle = faction.color;
-      ctx.textAlign = "center";
-      ctx.fillText(`${faction.emblem} ${faction.name} ${faction.emblem}`, size / 2, size - 20);
-      ctx.font = "10px sans-serif";
-      ctx.fillStyle = "#ffffffaa";
-      ctx.fillText("ハイペリオンの休日", size / 2, 24);
-    };
-
-    if (src) {
-      const image = new Image();
-      image.onload = () => {
-        ctx.clearRect(0, 0, size, size);
-        ctx.drawImage(image, 20, 34, size - 40, size - 90);
-        paintFrame();
-      };
-      image.src = src;
-    } else {
-      ctx.fillStyle = "#1c1430";
-      ctx.fillRect(0, 0, size, size);
-      ctx.fillStyle = "#ffffff33";
-      ctx.font = "14px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("写真をアップロードしてください", size / 2, size / 2);
-      paintFrame();
-    }
-  };
-
-  useEffect(() => { draw(imgSrc); }, [imgSrc, faction]);
-
-  const onFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setImgSrc(ev.target.result);
-    reader.readAsDataURL(file);
-  };
-
-  return (
-    <div className="px-4 py-6 flex flex-col items-center gap-4">
-      <canvas ref={canvasRef} className="rounded-lg shadow-lg" />
-      <label className="px-5 py-2 rounded-full bg-amber-400 text-black text-sm font-bold cursor-pointer active:scale-95 transition">
-        写真を選択
-        <input type="file" accept="image/*" className="hidden" onChange={onFile} />
-      </label>
-      <p className="text-[11px] text-white/40 text-center">
-        アップロードした写真はブラウザ内でのみ処理され、どこにも送信されません（POCではダウンロード機能は省略）
-      </p>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Board                                                               */
-/* ------------------------------------------------------------------ */
-
-function Board({ faction }) {
-  const [posts, setPosts] = useState([
-    { name: "運営", faction: null, text: "本日はご来場ありがとうございます！掲示板もぜひご活用ください。", time: "09:50" },
-    { name: "灯火工房", faction: "red", text: "ブースの新作アクセサリー、残りわずかです🔥", time: "11:20" },
-  ]);
-  const [text, setText] = useState("");
-
-  const post = () => {
-    if (!text.trim()) return;
-    setPosts((p) => [
-      { name: `${faction.name}の来場者`, faction: faction.id, text, time: "たった今" },
-      ...p,
-    ]);
-    setText("");
-  };
-
-  return (
-    <div className="px-4 py-4 flex flex-col h-[calc(100vh-56px)]">
-      <div className="flex-1 overflow-y-auto scrollbar-none space-y-3 pb-3">
-        {posts.map((p, i) => {
-          const f = FACTIONS.find((x) => x.id === p.faction);
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {BOOTHS.map((b) => {
+          const got = collected[b.id];
           return (
-            <div key={i} className="rounded-xl bg-white/5 border border-white/10 px-3 py-2">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span style={{ color: f ? f.color : "#d4af37" }} className="font-bold">
-                  {f ? f.emblem : "📣"} {p.name}
-                </span>
-                <span className="text-white/30">{p.time}</span>
+            <div key={b.id} style={{ background: got ? f.tint : PANEL, border: `1.5px solid ${got ? f.color : LINE}`, borderRadius: 14, padding: "13px 12px", display: "flex", alignItems: "center", gap: 10, animation: got ? "hpPop .3s ease both" : "none" }}>
+              <span style={{ fontSize: 22, filter: got ? "none" : "grayscale(1) opacity(.5)" }}>{b.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: got ? INK : SUB }}>{b.name}</div>
+                <div className="hp-hud" style={{ fontSize: 9.5, color: got ? f.color : "#AEB6C4" }}>{got ? "STAMPED" : "未取得"}</div>
               </div>
-              <p className="text-sm text-white/85 leading-relaxed">{p.text}</p>
             </div>
           );
         })}
       </div>
-      <div className="flex gap-2 pt-2 border-t border-white/10">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="ひとことメッセージを投稿…"
-          className="flex-1 rounded-full bg-white/10 px-4 py-2 text-sm outline-none placeholder-white/30"
-        />
-        <button onClick={post} className="px-4 py-2 rounded-full bg-amber-400 text-black text-sm font-bold active:scale-95 transition">
-          投稿
-        </button>
-      </div>
+
+      {reward && (
+        <Modal onClose={() => setReward(false)}>
+          <div style={{ fontSize: 40, marginBottom: 6 }}>🎁</div>
+          <div className="hp-disp" style={{ fontSize: 19, fontWeight: 800 }}>コンプリート特典</div>
+          <div style={{ fontSize: 12.5, color: SUB, margin: "6px 0 16px" }}>受付でこのコードを提示してアイテムと交換できます。</div>
+          <div className="hp-hud" style={{ fontSize: 26, fontWeight: 800, letterSpacing: ".18em", color: f.color, background: f.tint, border: `1px dashed ${f.color}`, borderRadius: 12, padding: "14px 0" }}>HX-7K2D</div>
+        </Modal>
+      )}
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Map / Exhibitors / Notify                                          */
-/* ------------------------------------------------------------------ */
+// ===================== 陣営バトル =====================
+function Battle({ f }) {
+  const data = [
+    { ...FACTIONS.azure, val: 42 },
+    { ...FACTIONS.crimson, val: 33 },
+    { ...FACTIONS.violet, val: 25 },
+  ];
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
 
-function VenueMap() {
   return (
-    <div className="px-4 py-6 space-y-4">
-      <div className="rounded-xl border border-white/10 bg-white/5 aspect-square flex items-center justify-center text-white/30 text-sm">
-        会場マップ画像（プレースホルダー）
-      </div>
-      <p className="text-xs text-white/50 leading-relaxed">
-        本実装では外部の会場マップサイトへのリンクでも代替可能です（CLAUDE.md仕様どおり）。
-      </p>
-      <button className="w-full px-4 py-3 rounded-full bg-white/10 border border-white/20 text-sm active:scale-95 transition">
-        外部マップサイトを開く（モック）
+    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card style={{ padding: 16, textAlign: "center" }}>
+        <div className="hp-hud" style={{ fontSize: 10.5, color: SUB }}>LIVE STANDINGS · 14:00 時点</div>
+        <div className="hp-disp" style={{ fontSize: 21, fontWeight: 900, margin: "4px 0 2px" }}>現在の首位は <span style={{ color: FACTIONS.azure.color }}>蒼の陣営</span></div>
+        <div style={{ fontSize: 12, color: SUB }}>全来場者のスタンプ達成率を集計中</div>
+      </Card>
+
+      <Card style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+        {data.map((d, i) => (
+          <div key={d.id}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ color: d.color, fontSize: 16 }}>{d.glyph}</span>
+                <span style={{ fontSize: 13.5, fontWeight: 800 }}>{d.name}</span>
+                {d.id === f.id && <Chip color={f.color} bg={f.tint}>あなた</Chip>}
+                {i === 0 && <span style={{ fontSize: 13 }}>👑</span>}
+              </div>
+              <span className="hp-hud" style={{ fontSize: 16, fontWeight: 800, color: d.color }}>{d.val}%</span>
+            </div>
+            <div style={{ height: 14, background: "#EEF1F7", borderRadius: 999, overflow: "hidden" }}>
+              <div style={{ width: mounted ? `${d.val}%` : 0, height: "100%", background: d.color, borderRadius: 999, transition: "width .9s cubic-bezier(.2,.8,.2,1)" }} />
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      <Card style={{ padding: 14, display: "flex", alignItems: "center", gap: 12, background: f.tint, border: `1px solid ${f.color}33` }}>
+        <span style={{ fontSize: 24 }}>{f.glyph}</span>
+        <div style={{ flex: 1, fontSize: 12.5, color: INK }}>あなたの貢献は <b style={{ color: f.color }}>120pt</b>。スタンプを集めるほど陣営に加点されます。</div>
+      </Card>
+    </div>
+  );
+}
+
+// ===================== 会場マップ =====================
+function MapScreen({ f }) {
+  return (
+    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ height: 230, background: "linear-gradient(135deg,#EAF1FB,#F3ECFB)", position: "relative" }}>
+          {/* 簡易マップ図 */}
+          {[
+            { x: 18, y: 24, n: "受付", c: FACTIONS.azure.color },
+            { x: 60, y: 20, n: "ステージ", c: FACTIONS.crimson.color },
+            { x: 30, y: 60, n: "物販", c: GOLD },
+            { x: 70, y: 64, n: "撮影", c: FACTIONS.violet.color },
+            { x: 48, y: 44, n: "広場", c: "#4AA06B" },
+          ].map((p, i) => (
+            <div key={i} style={{ position: "absolute", left: `${p.x}%`, top: `${p.y}%`, transform: "translate(-50%,-50%)", textAlign: "center" }}>
+              <div style={{ width: 14, height: 14, borderRadius: 999, background: p.c, border: "2px solid #fff", boxShadow: "0 2px 6px rgba(0,0,0,.18)", margin: "0 auto 3px" }} />
+              <div style={{ fontSize: 10, fontWeight: 700, background: "#fff", padding: "1px 6px", borderRadius: 6, border: `1px solid ${LINE}` }}>{p.n}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: 14 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800 }}>会場マップ</div>
+          <div style={{ fontSize: 12, color: SUB, marginTop: 3 }}>各ブースの位置を確認できます。</div>
+        </div>
+      </Card>
+      <button className="hp-tap" style={{ border: `1px solid ${f.color}`, background: f.tint, color: f.color, borderRadius: 12, padding: "13px", fontSize: 13.5, fontWeight: 800, cursor: "pointer" }}>
+        詳細マップを外部サイトで開く ↗
       </button>
     </div>
   );
 }
 
-function Exhibitors() {
+// ===================== メニュー =====================
+function Menu({ f, setScreen, setFaction }) {
+  const items = [
+    { id: "quiz", label: "クイズ", desc: "QRから回答と解説", icon: "❓" },
+    { id: "frame", label: "フォトフレーム", desc: "オリジナル枠で記念撮影", icon: "📸" },
+    { id: "board", label: "掲示板", desc: "来場者どうしで交流", icon: "💬" },
+    { id: "exhibitors", label: "出展者プロフィール", desc: "グッズ出展者の紹介", icon: "🏷️" },
+    { id: "schedule", label: "タイムテーブル", desc: "予定と通知設定", icon: "🗓️" },
+    { id: "wallpaper", label: "限定壁紙", desc: "来場特典のDL", icon: "🖼️" },
+  ];
   return (
-    <div className="px-4 py-4 space-y-3">
-      {EXHIBITORS.map((e, i) => (
-        <div key={i} className="rounded-xl bg-white/5 border border-white/10 px-4 py-3 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-amber-400/20 flex items-center justify-center text-lg">🛍️</div>
-          <div>
-            <div className="text-sm font-bold text-white/90">{e.name}</div>
-            <div className="text-xs text-white/50">{e.desc}</div>
+    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {items.map((it) => (
+        <button key={it.id} onClick={() => setScreen(it.id)} className="hp-tap" style={{ textAlign: "left", cursor: "pointer", background: PANEL, border: `1px solid ${LINE}`, borderRadius: 14, padding: 14, display: "flex", alignItems: "center", gap: 13 }}>
+          <span style={{ fontSize: 22 }}>{it.icon}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>{it.label}</div>
+            <div style={{ fontSize: 11.5, color: SUB }}>{it.desc}</div>
           </div>
+          <span style={{ color: "#C2CAD8", fontWeight: 800 }}>›</span>
+        </button>
+      ))}
+      <button onClick={() => { setFaction(null); setScreen("onboard"); }} className="hp-tap" style={{ marginTop: 6, cursor: "pointer", background: "#F4F6FA", border: `1px dashed ${LINE}`, borderRadius: 12, padding: "11px", fontSize: 12, fontWeight: 700, color: SUB }}>
+        ⟳ 陣営割り当てをもう一度見る（デモ用）
+      </button>
+    </div>
+  );
+}
+
+// ===================== クイズ =====================
+function Quiz({ f }) {
+  const [stage, setStage] = useState("scan"); // scan | q | result
+  const [choice, setChoice] = useState(null);
+
+  if (stage === "scan") {
+    return (
+      <div className="hp-screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center", padding: 10 }}>
+        <div style={{ width: 200, height: 200, borderRadius: 22, border: `2px dashed ${f.color}`, background: f.tint, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
+          <span style={{ fontSize: 64, animation: "hpScan 1.4s ease-in-out infinite" }}>🔳</span>
         </div>
+        <div style={{ fontSize: 14, fontWeight: 800 }}>会場のQRコードを読み取り</div>
+        <div style={{ fontSize: 12, color: SUB, margin: "5px 0 18px" }}>問題パネルのコードをスキャンしてください</div>
+        <button onClick={() => setStage("q")} className="hp-tap" style={{ border: "none", cursor: "pointer", background: f.color, color: "#fff", borderRadius: 12, padding: "13px 34px", fontSize: 14, fontWeight: 800 }}>スキャンする（デモ）</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <Card style={{ padding: 16 }}>
+        <Chip color={f.color} bg={f.tint}>QUIZ #01</Chip>
+        <div className="hp-disp" style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.55, marginTop: 10 }}>{QUIZ.q}</div>
+      </Card>
+      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+        {QUIZ.options.map((o, i) => {
+          const revealed = stage === "result";
+          const correct = i === QUIZ.answer;
+          const chosen = i === choice;
+          let bg = PANEL, bd = LINE, col = INK;
+          if (revealed && correct) { bg = "#EAF7EE"; bd = "#4AA06B"; col = "#2E7D4B"; }
+          else if (revealed && chosen && !correct) { bg = "#FCEBED"; bd = "#E0334B"; col = "#C42A40"; }
+          return (
+            <button key={i} disabled={revealed} onClick={() => { setChoice(i); setStage("result"); }} className="hp-tap"
+              style={{ textAlign: "left", cursor: revealed ? "default" : "pointer", background: bg, border: `1.5px solid ${bd}`, borderRadius: 13, padding: "13px 15px", fontSize: 13.5, fontWeight: 700, color: col, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>{o}</span>
+              {revealed && correct && <span>✓</span>}
+              {revealed && chosen && !correct && <span>✕</span>}
+            </button>
+          );
+        })}
+      </div>
+      {stage === "result" && (
+        <Card style={{ padding: 14, background: f.tint, border: `1px solid ${f.color}33`, animation: "hpUp .3s ease both" }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: f.color, marginBottom: 4 }}>解説</div>
+          <div style={{ fontSize: 12.5, color: INK, lineHeight: 1.7 }}>{QUIZ.explain}</div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ===================== フォトフレーム =====================
+function Frame({ f }) {
+  const [sel, setSel] = useState(FRAMES[0]);
+  const [captured, setCaptured] = useState(false);
+  return (
+    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ borderRadius: 18, padding: 12, background: sel.color, boxShadow: `0 10px 26px ${sel.color}40` }}>
+        <div style={{ borderRadius: 12, height: 240, background: "linear-gradient(135deg,#F0F3F9,#FFFFFF)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: SUB }}>
+          <span style={{ fontSize: 46 }}>🧍‍♀️</span>
+          <span style={{ fontSize: 12, marginTop: 6 }}>ここに写真が入ります</span>
+        </div>
+        <div className="hp-hud" style={{ textAlign: "center", color: "#fff", fontSize: 11, fontWeight: 700, padding: "8px 0 2px", letterSpacing: ".1em" }}>HYPERION HOLIDAY 2026</div>
+      </div>
+      <SectionTitle sub="お好きな枠で記念撮影できます">フレームを選ぶ</SectionTitle>
+      <div style={{ display: "flex", gap: 10 }}>
+        {FRAMES.map((fr) => (
+          <button key={fr.id} onClick={() => setSel(fr)} className="hp-tap" style={{ flex: 1, cursor: "pointer", border: `2px solid ${sel.id === fr.id ? fr.color : LINE}`, background: sel.id === fr.id ? "#fff" : PANEL, borderRadius: 12, padding: "12px 6px" }}>
+            <div style={{ height: 36, borderRadius: 8, border: `3px solid ${fr.color}`, marginBottom: 7 }} />
+            <div style={{ fontSize: 11, fontWeight: 700, color: INK }}>{fr.label}</div>
+          </button>
+        ))}
+      </div>
+      <button onClick={() => setCaptured(true)} className="hp-tap" style={{ border: "none", cursor: "pointer", background: f.color, color: "#fff", borderRadius: 13, padding: "14px", fontSize: 14.5, fontWeight: 800 }}>📷 撮影する</button>
+
+      {captured && (
+        <Modal onClose={() => setCaptured(false)}>
+          <div style={{ borderRadius: 14, padding: 8, background: sel.color, marginBottom: 12 }}>
+            <div style={{ borderRadius: 8, height: 140, background: "linear-gradient(135deg,#F0F3F9,#FFFFFF)", display: "flex", alignItems: "center", justifyContent: "center", color: SUB, fontSize: 36 }}>🧍‍♀️</div>
+          </div>
+          <div className="hp-disp" style={{ fontSize: 17, fontWeight: 800 }}>撮影しました！</div>
+          <div style={{ fontSize: 12.5, color: SUB, marginTop: 4 }}>「{sel.label}」で記念写真を保存しました（モック）。</div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ===================== 掲示板 =====================
+function Board({ f }) {
+  const [posts, setPosts] = useState(BOARD);
+  const [text, setText] = useState("");
+  const add = () => {
+    if (!text.trim()) return;
+    setPosts([{ id: Date.now(), who: "あなた", body: text, faction: f.id }, ...posts]);
+    setText("");
+  };
+  return (
+    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Card style={{ padding: 10, display: "flex", gap: 8 }}>
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="ひとことを投稿…"
+          style={{ flex: 1, border: `1px solid ${LINE}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, outline: "none", background: "#F8FAFD", color: INK }} />
+        <button onClick={add} className="hp-tap" style={{ border: "none", cursor: "pointer", background: f.color, color: "#fff", borderRadius: 10, padding: "0 16px", fontSize: 13, fontWeight: 800 }}>投稿</button>
+      </Card>
+      {posts.map((p) => {
+        const pf = FACTIONS[p.faction] || FACTIONS.azure;
+        return (
+          <Card key={p.id} style={{ padding: 13, borderLeft: `4px solid ${pf.color}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
+              <span style={{ color: pf.color }}>{pf.glyph}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 800 }}>{p.who}</span>
+              <Chip color={pf.color} bg={pf.tint}>{pf.name}</Chip>
+            </div>
+            <div style={{ fontSize: 13, color: INK, lineHeight: 1.6 }}>{p.body}</div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ===================== 出展者プロフィール =====================
+function Exhibitors({ f }) {
+  return (
+    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+      <div style={{ fontSize: 12, color: SUB, marginBottom: 2 }}>※プロフィールは出展者の外部ページから引用表示します。</div>
+      {EXHIBITORS.map((e) => (
+        <Card key={e.id} style={{ padding: 14, display: "flex", alignItems: "center", gap: 13 }}>
+          <div style={{ width: 46, height: 46, borderRadius: 12, background: `${e.color}1A`, color: e.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800 }} className="hp-disp">{e.name.charAt(0)}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>{e.name}</div>
+            <div style={{ fontSize: 11.5, color: SUB }}>{e.genre}</div>
+          </div>
+          <button className="hp-tap" style={{ border: `1px solid ${e.color}`, color: e.color, background: "#fff", borderRadius: 9, padding: "7px 12px", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}>外部 ↗</button>
+        </Card>
       ))}
     </div>
   );
 }
 
-function Notify() {
+// ===================== タイムテーブル & 通知 =====================
+function Schedule({ f }) {
+  const [on, setOn] = useState({ 1: true });
   return (
-    <div className="px-4 py-4 space-y-3">
-      {TIMETABLE.map((t, i) => (
-        <div key={i} className="flex gap-3">
-          <div className="text-xs text-amber-300 font-bold w-12 pt-1">{t.time}</div>
-          <div className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2">
-            <div className="text-sm font-bold text-white/90">{t.title}</div>
-            <div className="text-xs text-white/50">{t.desc}</div>
+    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 12, color: SUB, marginBottom: 2 }}>🔔をオンにすると開始前に通知が届きます。</div>
+      {SCHEDULE.map((s, i) => (
+        <Card key={i} style={{ padding: 13, display: "flex", alignItems: "center", gap: 13, borderColor: s.soon ? `${f.color}55` : LINE }}>
+          <div className="hp-hud" style={{ fontSize: 15, fontWeight: 800, color: s.soon ? f.color : INK, width: 46 }}>{s.t}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{s.title}</div>
+            <div style={{ fontSize: 11.5, color: SUB }}>{s.spot}</div>
           </div>
-        </div>
+          <button onClick={() => setOn((o) => ({ ...o, [i]: !o[i] }))} className="hp-tap" style={{ cursor: "pointer", border: "none", width: 38, height: 24, borderRadius: 999, background: on[i] ? f.color : "#D6DCE6", position: "relative", transition: "background .2s" }}>
+            <span style={{ position: "absolute", top: 2, left: on[i] ? 16 : 2, width: 20, height: 20, borderRadius: 999, background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.2)", transition: "left .2s" }} />
+          </button>
+        </Card>
       ))}
-      <p className="text-[11px] text-white/40 pt-2">
-        本実装ではタイムテーブルに合わせてプッシュ通知を送る想定（現在はモック表示のみ）。
-      </p>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Home                                                                */
-/* ------------------------------------------------------------------ */
-
-function Home({ onNavigate, stampCount }) {
+// ===================== 限定壁紙 =====================
+function Wallpaper({ f }) {
   return (
-    <div className="px-4 py-5">
-      <div className="grid grid-cols-2 gap-3">
-        {MENU_ITEMS.map((m) => (
-          <Tile
-            key={m.id}
-            icon={m.icon}
-            label={m.label}
-            onClick={() => onNavigate(m.id)}
-            badge={m.id === "stamp" && stampCount > 0 ? `${stampCount}` : null}
-          />
+    <div className="hp-screen">
+      <SectionTitle sub="来場特典として配布中。タップでダウンロード（モック）。">限定壁紙</SectionTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        {WALLPAPERS.map((w) => (
+          <div key={w.id} className="hp-tap" style={{ cursor: "pointer", borderRadius: 14, overflow: "hidden", border: `1px solid ${LINE}`, background: "#fff" }}>
+            <div style={{ height: 150, background: `linear-gradient(150deg,${w.from},${w.to})`, position: "relative" }}>
+              <span style={{ position: "absolute", right: 8, bottom: 8, color: "#ffffff", fontSize: 22, opacity: .9 }}>❖</span>
+            </div>
+            <div style={{ padding: "9px 11px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700 }}>{w.label}</span>
+              <span style={{ color: f.color, fontSize: 15 }}>⤓</span>
+            </div>
+          </div>
         ))}
       </div>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* App root                                                            */
-/* ------------------------------------------------------------------ */
-
-function App() {
-  const [faction, setFaction] = useState(null);
-  const [screen, setScreen] = useState("home");
-  const [stamped, setStamped] = useState([]);
-
-  if (!faction) {
-    return (
-      <div className="phone-frame">
-        <Onboarding onComplete={(f) => setFaction(f)} />
-      </div>
-    );
-  }
-
+// ------- モーダル -------
+function Modal({ children, onClose }) {
   return (
-    <div className="phone-frame">
-      <Header faction={faction} stampCount={stamped.length} onHome={() => setScreen("home")} screen={screen} />
-      {screen === "home" && <Home onNavigate={setScreen} stampCount={stamped.length} />}
-      {screen === "stamp" && <StampRally faction={faction} stamped={stamped} setStamped={setStamped} />}
-      {screen === "quiz" && <Quiz />}
-      {screen === "photo" && <PhotoFrame faction={faction} />}
-      {screen === "board" && <Board faction={faction} />}
-      {screen === "map" && <VenueMap />}
-      {screen === "exhibit" && <Exhibitors />}
-      {screen === "notify" && <Notify />}
+    <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(27,34,48,.32)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 60 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 20, padding: 24, textAlign: "center", width: "100%", maxWidth: 300, animation: "hpPop .3s ease both", boxShadow: "0 20px 50px rgba(0,0,0,.25)" }}>
+        {children}
+        <button onClick={onClose} style={{ marginTop: 18, border: "none", background: "#F1F4FA", color: SUB, borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>閉じる</button>
+      </div>
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(<HyperionHolidayMock />);
 </script>
 </body>
 </html>

@@ -243,8 +243,12 @@ function ScreenRouter({ screen, setScreen, faction, setFaction }) {
 function Onboard({ onDone }) {
   const [phase, setPhase] = useState("intro"); // intro | scanning | result
   const [picked, setPicked] = useState(null);
+  const [nickname, setNickname] = useState("");
+
+  const canAssign = nickname.trim().length > 0;
 
   const assign = () => {
+    if (!canAssign) return;
     setPhase("scanning");
     setTimeout(() => {
       const f = FACTION_LIST[Math.floor(Math.random() * 3)];
@@ -261,8 +265,15 @@ function Onboard({ onDone }) {
         <>
           <div style={{ fontSize: 54, marginBottom: 8, animation: "hpFloat 3s ease-in-out infinite" }}>🛰️</div>
           <div className="hp-disp" style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.3, marginBottom: 10 }}>ようこそ、<br />ハイペリオンへ</div>
-          <p style={{ fontSize: 13.5, color: SUB, lineHeight: 1.7, maxWidth: 270, marginBottom: 28 }}>来場するとあなたの陣営が決まります。仲間とスタンプを集めて、陣営バトルを勝ち抜こう。</p>
-          <button onClick={assign} className="hp-tap" style={{ background: FACTIONS.azure.color, color: "#fff", border: "none", borderRadius: 14, padding: "15px 40px", fontSize: 15.5, fontWeight: 800, cursor: "pointer", boxShadow: "0 10px 24px rgba(46,107,230,.3)" }}>陣営を割り当てる</button>
+          <p style={{ fontSize: 13.5, color: SUB, lineHeight: 1.7, maxWidth: 270, marginBottom: 20 }}>来場するとあなたの陣営が決まります。仲間とスタンプを集めて、陣営バトルを勝ち抜こう。</p>
+          <input
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value.slice(0, 20))}
+            placeholder="ニックネームを入力"
+            maxLength={20}
+            style={{ width: "100%", maxWidth: 260, boxSizing: "border-box", border: `1px solid ${LINE}`, borderRadius: 12, padding: "12px 14px", fontSize: 14.5, marginBottom: 18, background: PANEL, color: INK, textAlign: "center" }}
+          />
+          <button onClick={assign} disabled={!canAssign} className="hp-tap" style={{ background: canAssign ? FACTIONS.azure.color : LINE, color: canAssign ? "#fff" : SUB, border: "none", borderRadius: 14, padding: "15px 40px", fontSize: 15.5, fontWeight: 800, cursor: canAssign ? "pointer" : "not-allowed", boxShadow: canAssign ? "0 10px 24px rgba(46,107,230,.3)" : "none", transition: "background .2s,box-shadow .2s" }}>陣営を割り当てる</button>
         </>
       )}
 
@@ -284,7 +295,8 @@ function Onboard({ onDone }) {
           <div className="hp-hud" style={{ fontSize: 11, color: picked.color, letterSpacing: ".12em", marginBottom: 4 }}>YOUR FACTION</div>
           <div style={{ fontSize: 60, color: picked.color, marginBottom: 4 }}>{picked.glyph}</div>
           <div className="hp-disp" style={{ fontSize: 30, fontWeight: 900, color: picked.color }}>{picked.name}</div>
-          <div className="hp-hud" style={{ fontSize: 12, color: SUB, marginTop: 4, marginBottom: 26 }}>{picked.code}</div>
+          <div className="hp-hud" style={{ fontSize: 12, color: SUB, marginTop: 4, marginBottom: 10 }}>{picked.code}</div>
+          {nickname.trim() && <div style={{ fontSize: 13, color: SUB, marginBottom: 26 }}>ようこそ、{nickname.trim()}さん</div>}
           <button onClick={() => onDone(picked)} className="hp-tap" style={{ background: picked.color, color: "#fff", border: "none", borderRadius: 14, padding: "14px 44px", fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: `0 10px 24px ${picked.color}44` }}>はじめる →</button>
         </div>
       )}

@@ -18,7 +18,7 @@
 <div id="root"></div>
 
 <script type="text/babel" data-presets="react,typescript">
-const { useState, useEffect, useRef } = React;
+const { useState } = React;
 
 /**
  * ハイペリオンの休日 — 会場アプリ クリックモック (PoC)
@@ -77,9 +77,7 @@ const EXHIBITORS = [
 const SCHEDULE = [
   { t: "11:00", title: "開場・受付開始", spot: "受付ゲート", soon: false },
   { t: "12:30", title: "オープニングトーク", spot: "メインステージ", soon: true },
-  { t: "14:00", title: "陣営バトル 中間発表", spot: "メインステージ", soon: false },
   { t: "15:30", title: "コスプレ撮影会", spot: "コスプレ広場", soon: false },
-  { t: "17:00", title: "陣営バトル 結果発表", spot: "メインステージ", soon: false },
   { t: "17:30", title: "クロージング", spot: "メインステージ", soon: false },
 ];
 
@@ -130,7 +128,7 @@ function Card({ children, style }) {
 
 // ===================================================================
 function HyperionHolidayMock() {
-  const [screen, setScreen] = useState("onboard"); // onboard | home | rally | battle | map | menu | quiz | frame | board | schedule | exhibitors | wallpaper
+  const [screen, setScreen] = useState("onboard"); // onboard | home | rally | map | menu | quiz | frame | board | schedule | exhibitors | wallpaper
   const [faction, setFaction] = useState(null);
 
   const goHome = (f) => { setFaction(f); setScreen("home"); };
@@ -176,7 +174,7 @@ function HyperionHolidayMock() {
 function TopBar({ faction, screen }) {
   const f = faction || FACTIONS.azure;
   const titles = {
-    home: "ホーム", rally: "スタンプラリー", battle: "陣営バトル", map: "会場マップ",
+    home: "ホーム", rally: "スタンプラリー", map: "会場マップ",
     menu: "メニュー", quiz: "クイズ", frame: "フォトフレーム", board: "掲示板",
     schedule: "タイムテーブル", exhibitors: "出展者", wallpaper: "限定壁紙",
   };
@@ -200,7 +198,6 @@ function TabBar({ screen, setScreen, faction }) {
   const tabs = [
     { id: "home", label: "ホーム", icon: "⌂" },
     { id: "rally", label: "ラリー", icon: "◉" },
-    { id: "battle", label: "バトル", icon: "⚔" },
     { id: "map", label: "マップ", icon: "🗺" },
     { id: "menu", label: "メニュー", icon: "☰" },
   ];
@@ -226,7 +223,6 @@ function ScreenRouter({ screen, setScreen, faction, setFaction }) {
   switch (screen) {
     case "home": return <Home key="home" f={f} setScreen={setScreen} />;
     case "rally": return <Rally key="rally" f={f} />;
-    case "battle": return <Battle key="battle" f={f} />;
     case "map": return <MapScreen key="map" f={f} />;
     case "menu": return <Menu key="menu" f={f} setScreen={setScreen} setFaction={setFaction} />;
     case "quiz": return <Quiz key="quiz" f={f} />;
@@ -265,7 +261,7 @@ function Onboard({ onDone }) {
         <>
           <div style={{ fontSize: 54, marginBottom: 8, animation: "hpFloat 3s ease-in-out infinite" }}>🛰️</div>
           <div className="hp-disp" style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.3, marginBottom: 10 }}>ようこそ、<br />ハイペリオンへ</div>
-          <p style={{ fontSize: 13.5, color: SUB, lineHeight: 1.7, maxWidth: 270, marginBottom: 20 }}>来場するとあなたの陣営が決まります。仲間とスタンプを集めて、陣営バトルを勝ち抜こう。</p>
+          <p style={{ fontSize: 13.5, color: SUB, lineHeight: 1.7, maxWidth: 270, marginBottom: 20 }}>来場するとあなたの陣営が決まります。仲間とスタンプを集めよう。</p>
           <input
             value={nickname}
             onChange={(e) => setNickname(e.target.value.slice(0, 20))}
@@ -308,7 +304,6 @@ function Onboard({ onDone }) {
 function Home({ f, setScreen }) {
   const quick = [
     { id: "rally", label: "スタンプラリー", icon: "◉", desc: "あと3個でコンプ" },
-    { id: "battle", label: "陣営バトル", icon: "⚔", desc: "蒼が首位！" },
     { id: "quiz", label: "クイズに挑戦", icon: "❓", desc: "QRを読み取る" },
     { id: "wallpaper", label: "限定壁紙", icon: "🖼", desc: "4種 配布中" },
   ];
@@ -396,7 +391,7 @@ function Rally({ f }) {
         <div style={{ height: 10, background: "#EEF1F7", borderRadius: 999, overflow: "hidden" }}>
           <div style={{ width: `${pct}%`, height: "100%", background: f.color, borderRadius: 999, transition: "width .5s" }} />
         </div>
-        <div style={{ fontSize: 12, color: SUB, marginTop: 8 }}>集めたスタンプは陣営バトルの集計に反映されます。コンプリートで特典コードを受け取れます。</div>
+        <div style={{ fontSize: 12, color: SUB, marginTop: 8 }}>コンプリートで特典コードを受け取れます。</div>
       </Card>
 
       <button onClick={count === BOOTHS.length ? () => setReward(true) : scan} className="hp-tap"
@@ -427,51 +422,6 @@ function Rally({ f }) {
           <div className="hp-hud" style={{ fontSize: 26, fontWeight: 800, letterSpacing: ".18em", color: f.color, background: f.tint, border: `1px dashed ${f.color}`, borderRadius: 12, padding: "14px 0" }}>HX-7K2D</div>
         </Modal>
       )}
-    </div>
-  );
-}
-
-// ===================== 陣営バトル =====================
-function Battle({ f }) {
-  const data = [
-    { ...FACTIONS.azure, val: 42 },
-    { ...FACTIONS.crimson, val: 33 },
-    { ...FACTIONS.violet, val: 25 },
-  ];
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
-
-  return (
-    <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Card style={{ padding: 16, textAlign: "center" }}>
-        <div className="hp-hud" style={{ fontSize: 10.5, color: SUB }}>LIVE STANDINGS · 14:00 時点</div>
-        <div className="hp-disp" style={{ fontSize: 21, fontWeight: 900, margin: "4px 0 2px" }}>現在の首位は <span style={{ color: FACTIONS.azure.color }}>蒼の陣営</span></div>
-        <div style={{ fontSize: 12, color: SUB }}>全来場者のスタンプ達成率を集計中</div>
-      </Card>
-
-      <Card style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
-        {data.map((d, i) => (
-          <div key={d.id}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ color: d.color, fontSize: 16 }}>{d.glyph}</span>
-                <span style={{ fontSize: 13.5, fontWeight: 800 }}>{d.name}</span>
-                {d.id === f.id && <Chip color={f.color} bg={f.tint}>あなた</Chip>}
-                {i === 0 && <span style={{ fontSize: 13 }}>👑</span>}
-              </div>
-              <span className="hp-hud" style={{ fontSize: 16, fontWeight: 800, color: d.color }}>{d.val}%</span>
-            </div>
-            <div style={{ height: 14, background: "#EEF1F7", borderRadius: 999, overflow: "hidden" }}>
-              <div style={{ width: mounted ? `${d.val}%` : 0, height: "100%", background: d.color, borderRadius: 999, transition: "width .9s cubic-bezier(.2,.8,.2,1)" }} />
-            </div>
-          </div>
-        ))}
-      </Card>
-
-      <Card style={{ padding: 14, display: "flex", alignItems: "center", gap: 12, background: f.tint, border: `1px solid ${f.color}33` }}>
-        <span style={{ fontSize: 24 }}>{f.glyph}</span>
-        <div style={{ flex: 1, fontSize: 12.5, color: INK }}>あなたの貢献は <b style={{ color: f.color }}>120pt</b>。スタンプを集めるほど陣営に加点されます。</div>
-      </Card>
     </div>
   );
 }

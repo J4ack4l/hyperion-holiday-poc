@@ -6,12 +6,12 @@
 <title>ハイペリオンの休日 POC</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Murecho:wght@500;700;800;900&family=Noto+Sans+JP:wght@400;500;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600;1,700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@500;700;800;900&display=swap" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
-  html, body { margin: 0; padding: 0; background: #DDE4EF; }
+  html, body { margin: 0; padding: 0; background: #EDE7D8; }
 </style>
 </head>
 <body>
@@ -26,38 +26,43 @@ const { useState } = React;
  *
  * 仕様メモ:
  *  - 全データはダミー。バックエンド無し（モック）。
- *  - デザインは「ライトモード固定」。暗い背景は一切使わない。
- *  - 3陣営カラー（蒼/緋/菫）でゲーム的に色分け。
+ *  - デザインは「ライトモード固定」。暗い背景は一切使わない。白基調のロココ様式×ラグジュアリー／パーティ会場のイメージ。
+ *  - 3陣営（ネゲントロピー／天命／ヨルムンガンド）でカラー分け。
  *
  * 出典: HyperionHoliday_AppMock.jsx（Claude Codeによる作成）を
  *       CDN読込のみで動く単一HTMLへ移植したもの。
  */
 
 // ------- デザイントークン -------
-const INK = "#1B2230";
-const SUB = "#5C667A";
-const LINE = "#E4E9F1";
-const BG = "#EEF2F8";
-const PANEL = "#FFFFFF";
-const GOLD = "#E0A02E";
+const INK = "#2A241C";
+const SUB = "#8A8071";
+const LINE = "#E8DFC9";
+const BG = "#F6F1E7";
+const PANEL = "#FFFDF8";
+const GOLD = "#C9A34E";
+const GOLD_GRADIENT_FROM = "#D9B26A";
+const GOLD_GRADIENT_TO = "#B8862E";
+const BRONZE_GRADIENT_FROM = "#5C4322";
+const BRONZE_GRADIENT_TO = "#3D2C15";
+const BRONZE_TEXT = "#F3DFA8";
 
 const FACTIONS = {
-  azure: { id: "azure", name: "蒼の陣営", code: "VANGUARD", color: "#2E6BE6", tint: "#E8F0FE", glyph: "❖" },
-  crimson: { id: "crimson", name: "緋の陣営", code: "IGNITE", color: "#E0334B", tint: "#FCE9EC", glyph: "✦" },
-  violet: { id: "violet", name: "菫の陣営", code: "PROJECT-B", color: "#7C4DE0", tint: "#F0EAFC", glyph: "✧" },
+  negentropy: { id: "negentropy", name: "ネゲントロピー", code: "Anti-Entropy", color: "#1E3AFF", textColor: "#1E3AFF", onColor: "#FFFFFF", tint: "#E9EDFF", glyph: "❖" },
+  schicksal: { id: "schicksal", name: "天命", code: "Schicksal", color: "#FFD700", textColor: "#8A6A0E", onColor: "#3D2C15", tint: "#FCEEAE", glyph: "⚜" },
+  jormungandr: { id: "jormungandr", name: "ヨルムンガンド", code: "Jormungandr", color: "#2E8B57", textColor: "#2E8B57", onColor: "#FFFFFF", tint: "#E5F3EB", glyph: "∞" },
 };
-const FACTION_LIST = [FACTIONS.azure, FACTIONS.crimson, FACTIONS.violet];
+const FACTION_LIST = [FACTIONS.negentropy, FACTIONS.schicksal, FACTIONS.jormungandr];
 
 // ------- ダミーデータ -------
 const BOOTHS = [
-  { id: 1, name: "受付ゲート", icon: "🎫" },
-  { id: 2, name: "メインステージ", icon: "🎤" },
-  { id: 3, name: "物販エリア", icon: "🛍️" },
-  { id: 4, name: "フォトスポット", icon: "📸" },
-  { id: 5, name: "ファンアート展", icon: "🎨" },
-  { id: 6, name: "コスプレ広場", icon: "✨" },
-  { id: 7, name: "休憩ラウンジ", icon: "☕" },
-  { id: 8, name: "出口記念", icon: "🏁" },
+  { id: 1, name: "受付ゲート", icon: "⛩" },
+  { id: 2, name: "メインステージ", icon: "♪" },
+  { id: 3, name: "物販エリア", icon: "✤" },
+  { id: 4, name: "フォトスポット", icon: "❋" },
+  { id: 5, name: "ファンアート展", icon: "✎" },
+  { id: 6, name: "コスプレ広場", icon: "✧" },
+  { id: 7, name: "休憩ラウンジ", icon: "❀" },
+  { id: 8, name: "出口記念", icon: "⚑" },
 ];
 
 const QUIZ = {
@@ -68,10 +73,10 @@ const QUIZ = {
 };
 
 const EXHIBITORS = [
-  { id: 1, name: "studio NOVA", genre: "アクリルスタンド", color: "#2E6BE6" },
-  { id: 2, name: "緋色工房", genre: "イラスト集 / 缶バッジ", color: "#E0334B" },
-  { id: 3, name: "Lavender Works", genre: "刺繍ワッペン", color: "#7C4DE0" },
-  { id: 4, name: "Hyperion Goods", genre: "ステッカー / キーホルダー", color: "#E0A02E" },
+  { id: 1, name: "studio NOVA", genre: "アクリルスタンド", color: "#1E3AFF" },
+  { id: 2, name: "緋色工房", genre: "イラスト集 / 缶バッジ", color: "#8A6A0E" },
+  { id: 3, name: "Lavender Works", genre: "刺繍ワッペン", color: "#2E8B57" },
+  { id: 4, name: "Hyperion Goods", genre: "ステッカー / キーホルダー", color: "#C9A34E" },
 ];
 
 const SCHEDULE = [
@@ -82,22 +87,22 @@ const SCHEDULE = [
 ];
 
 const BOARD = [
-  { id: 1, who: "あおい", body: "蒼陣営、一緒にスタンプ集めましょ〜！受付前にいます🩵", faction: "azure" },
-  { id: 2, who: "れん", body: "物販エリアのアクスタ完売しそう、お早めに！", faction: "crimson" },
-  { id: 3, who: "みやび", body: "フォトスポットのフレーム可愛すぎる📸", faction: "violet" },
+  { id: 1, who: "あおい", body: "ネゲントロピー、一緒にスタンプ集めましょ〜！受付前にいます🩵", faction: "negentropy" },
+  { id: 2, who: "れん", body: "物販エリアのアクスタ完売しそう、お早めに！", faction: "schicksal" },
+  { id: 3, who: "みやび", body: "フォトスポットのフレーム可愛すぎる📸", faction: "jormungandr" },
 ];
 
 const WALLPAPERS = [
-  { id: 1, label: "蒼 / Vanguard", from: "#3B7BF0", to: "#7FB0FF" },
-  { id: 2, label: "緋 / Ignite", from: "#E0334B", to: "#FF8A8A" },
-  { id: 3, label: "菫 / Project-B", from: "#7C4DE0", to: "#B79CF5" },
-  { id: 4, label: "限定 / Hyperion", from: "#E0A02E", to: "#F7D27A" },
+  { id: 1, label: "ネゲントロピー / Anti-Entropy", from: "#1E3AFF", to: "#7C93FF" },
+  { id: 2, label: "天命 / Schicksal", from: "#FFD700", to: "#FFE773" },
+  { id: 3, label: "ヨルムンガンド / Jormungandr", from: "#2E8B57", to: "#7FC79D" },
+  { id: 4, label: "限定 / Hyperion", from: "#C9A34E", to: "#E8CE93" },
 ];
 
 const FRAMES = [
-  { id: 1, label: "陣営カラー枠", color: "#2E6BE6" },
-  { id: 2, label: "イベントロゴ枠", color: "#E0A02E" },
-  { id: 3, label: "星屑フレーム", color: "#7C4DE0" },
+  { id: 1, label: "陣営カラー枠", color: "#1E3AFF" },
+  { id: 2, label: "イベントロゴ枠", color: "#C9A34E" },
+  { id: 3, label: "星屑フレーム", color: "#2E8B57" },
 ];
 
 // ------- 小物 -------
@@ -134,10 +139,10 @@ function HyperionHolidayMock() {
   const goHome = (f) => { setFaction(f); setScreen("home"); };
 
   return (
-    <div style={{ minHeight: "100vh", width: "100%", display: "flex", alignItems: "flex-start", justifyContent: "center", background: "#DDE4EF", padding: "20px 12px", boxSizing: "border-box", fontFamily: "'Noto Sans JP', sans-serif", color: INK }}>
+    <div style={{ minHeight: "100vh", width: "100%", display: "flex", alignItems: "flex-start", justifyContent: "center", background: "#EDE7D8", padding: "20px 12px", boxSizing: "border-box", fontFamily: "'Noto Sans JP', sans-serif", color: INK }}>
       <style>{`
-        .hp-disp{ font-family:'Murecho','Noto Sans JP',sans-serif; }
-        .hp-hud{ font-family:'Orbitron','Murecho',sans-serif; letter-spacing:.06em; }
+        .hp-disp{ font-family:'Noto Serif JP','Noto Sans JP',serif; }
+        .hp-hud{ font-family:'Cormorant Garamond','Noto Serif JP',serif; font-style:italic; letter-spacing:.08em; }
         @keyframes hpUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
         @keyframes hpPop{ 0%{transform:scale(.4); opacity:0;} 60%{transform:scale(1.12);} 100%{transform:scale(1); opacity:1;} }
         @keyframes hpScan{ 0%,100%{opacity:.35;} 50%{opacity:1;} }
@@ -149,10 +154,10 @@ function HyperionHolidayMock() {
       `}</style>
 
       {/* デバイスフレーム（ライト） */}
-      <div style={{ width: "100%", maxWidth: 392, height: "min(840px, 93vh)", background: "#F4F7FC", borderRadius: 30, border: `1px solid #CBD4E2`, boxShadow: "0 24px 60px rgba(27,34,48,.22)", overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
+      <div style={{ width: "100%", maxWidth: 392, height: "min(840px, 93vh)", background: "#F6F1E7", borderRadius: 30, border: `1px solid #D9CBA0`, boxShadow: "0 24px 60px rgba(60,45,10,.22)", overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
 
         {/* PoCリボン */}
-        <div style={{ position: "absolute", top: 12, right: -34, transform: "rotate(38deg)", background: GOLD, color: "#fff", fontSize: 10, fontWeight: 800, padding: "3px 36px", zIndex: 50, letterSpacing: ".08em" }} className="hp-hud">MOCK</div>
+        <div style={{ position: "absolute", top: 12, right: -34, transform: "rotate(38deg)", background: `linear-gradient(135deg,${GOLD_GRADIENT_FROM},${GOLD_GRADIENT_TO})`, color: "#fff", fontSize: 10, fontWeight: 800, padding: "3px 36px", zIndex: 50, letterSpacing: ".08em" }} className="hp-hud">MOCK</div>
 
         {screen === "onboard"
           ? <Onboard onDone={goHome} />
@@ -172,7 +177,7 @@ function HyperionHolidayMock() {
 
 // ------- 上部バー -------
 function TopBar({ faction, screen }) {
-  const f = faction || FACTIONS.azure;
+  const f = faction || FACTIONS.negentropy;
   const titles = {
     home: "ホーム", rally: "スタンプラリー", map: "会場マップ",
     menu: "メニュー", quiz: "クイズ", frame: "フォトフレーム", board: "掲示板",
@@ -185,8 +190,8 @@ function TopBar({ faction, screen }) {
         <div className="hp-disp" style={{ fontSize: 17, fontWeight: 800 }}>{titles[screen] || ""}</div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 7, background: f.tint, border: `1px solid ${f.color}33`, padding: "5px 10px", borderRadius: 999 }}>
-        <span style={{ color: f.color, fontSize: 14 }}>{f.glyph}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: f.color }}>{f.name}</span>
+        <span style={{ color: f.textColor, fontSize: 14 }}>{f.glyph}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: f.textColor }}>{f.name}</span>
       </div>
     </header>
   );
@@ -194,11 +199,11 @@ function TopBar({ faction, screen }) {
 
 // ------- 下部タブ -------
 function TabBar({ screen, setScreen, faction }) {
-  const f = faction || FACTIONS.azure;
+  const f = faction || FACTIONS.negentropy;
   const tabs = [
     { id: "home", label: "ホーム", icon: "⌂" },
     { id: "rally", label: "ラリー", icon: "◉" },
-    { id: "map", label: "マップ", icon: "🗺" },
+    { id: "map", label: "マップ", icon: "✛" },
     { id: "menu", label: "メニュー", icon: "☰" },
   ];
   return (
@@ -207,7 +212,7 @@ function TabBar({ screen, setScreen, faction }) {
         const active = screen === t.id || (t.id === "menu" && ["quiz", "frame", "board", "schedule", "exhibitors", "wallpaper"].includes(screen));
         return (
           <button key={t.id} onClick={() => setScreen(t.id)} className="hp-tap"
-            style={{ flex: 1, border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", color: active ? f.color : "#9AA4B6", transition: "color .15s" }}>
+            style={{ flex: 1, border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", color: active ? f.textColor : "#9AA4B6", transition: "color .15s" }}>
             <span style={{ fontSize: 17, lineHeight: 1 }}>{t.icon}</span>
             <span style={{ fontSize: 10.5, fontWeight: active ? 800 : 600 }}>{t.label}</span>
           </button>
@@ -219,7 +224,7 @@ function TabBar({ screen, setScreen, faction }) {
 
 // ------- ルーター -------
 function ScreenRouter({ screen, setScreen, faction, setFaction }) {
-  const f = faction || FACTIONS.azure;
+  const f = faction || FACTIONS.negentropy;
   switch (screen) {
     case "home": return <Home key="home" f={f} setScreen={setScreen} />;
     case "rally": return <Rally key="rally" f={f} />;
@@ -254,12 +259,12 @@ function Onboard({ onDone }) {
   };
 
   return (
-    <div className="hp-screen" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 26, textAlign: "center", background: phase === "result" && picked ? picked.tint : "#F4F7FC", transition: "background .5s" }}>
+    <div className="hp-screen" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 26, textAlign: "center", background: phase === "result" && picked ? picked.tint : BG, transition: "background .5s" }}>
       <div className="hp-hud" style={{ fontSize: 11, color: SUB, marginBottom: 6 }}>HYPERION HOLIDAY · 非公式オフラインイベント</div>
 
       {phase === "intro" && (
         <>
-          <div style={{ fontSize: 54, marginBottom: 8, animation: "hpFloat 3s ease-in-out infinite" }}>🛰️</div>
+          <div style={{ fontSize: 54, marginBottom: 8, animation: "hpFloat 3s ease-in-out infinite" }}>✺</div>
           <div className="hp-disp" style={{ fontSize: 26, fontWeight: 900, lineHeight: 1.3, marginBottom: 10 }}>ようこそ、<br />ハイペリオンへ</div>
           <p style={{ fontSize: 13.5, color: SUB, lineHeight: 1.7, maxWidth: 270, marginBottom: 20 }}>来場するとあなたの陣営が決まります。仲間とスタンプを集めよう。</p>
           <input
@@ -269,13 +274,13 @@ function Onboard({ onDone }) {
             maxLength={20}
             style={{ width: "100%", maxWidth: 260, boxSizing: "border-box", border: `1px solid ${LINE}`, borderRadius: 12, padding: "12px 14px", fontSize: 14.5, marginBottom: 18, background: PANEL, color: INK, textAlign: "center" }}
           />
-          <button onClick={assign} disabled={!canAssign} className="hp-tap" style={{ background: canAssign ? FACTIONS.azure.color : LINE, color: canAssign ? "#fff" : SUB, border: "none", borderRadius: 14, padding: "15px 40px", fontSize: 15.5, fontWeight: 800, cursor: canAssign ? "pointer" : "not-allowed", boxShadow: canAssign ? "0 10px 24px rgba(46,107,230,.3)" : "none", transition: "background .2s,box-shadow .2s" }}>陣営を割り当てる</button>
+          <button onClick={assign} disabled={!canAssign} className="hp-tap" style={{ background: canAssign ? FACTIONS.negentropy.color : LINE, color: canAssign ? "#fff" : SUB, border: "none", borderRadius: 14, padding: "15px 40px", fontSize: 15.5, fontWeight: 800, cursor: canAssign ? "pointer" : "not-allowed", boxShadow: canAssign ? "0 10px 24px rgba(30,58,255,.3)" : "none", transition: "background .2s,box-shadow .2s" }}>陣営を割り当てる</button>
         </>
       )}
 
       {phase === "scanning" && (
         <>
-          <div style={{ fontSize: 56, marginBottom: 16, animation: "hpScan 1s ease-in-out infinite" }}>📡</div>
+          <div style={{ fontSize: 56, marginBottom: 16, animation: "hpScan 1s ease-in-out infinite" }}>✵</div>
           <div className="hp-hud" style={{ fontSize: 15, fontWeight: 800, color: INK }}>SCANNING...</div>
           <div style={{ fontSize: 13, color: SUB, marginTop: 8 }}>あなたの適性を解析しています</div>
           <div style={{ display: "flex", gap: 8, marginTop: 22 }}>
@@ -287,13 +292,21 @@ function Onboard({ onDone }) {
       )}
 
       {phase === "result" && picked && (
-        <div style={{ animation: "hpPop .5s ease both" }}>
-          <div className="hp-hud" style={{ fontSize: 11, color: picked.color, letterSpacing: ".12em", marginBottom: 4 }}>YOUR FACTION</div>
-          <div style={{ fontSize: 60, color: picked.color, marginBottom: 4 }}>{picked.glyph}</div>
-          <div className="hp-disp" style={{ fontSize: 30, fontWeight: 900, color: picked.color }}>{picked.name}</div>
-          <div className="hp-hud" style={{ fontSize: 12, color: SUB, marginTop: 4, marginBottom: 10 }}>{picked.code}</div>
-          {nickname.trim() && <div style={{ fontSize: 13, color: SUB, marginBottom: 26 }}>ようこそ、{nickname.trim()}さん</div>}
-          <button onClick={() => onDone(picked)} className="hp-tap" style={{ background: picked.color, color: "#fff", border: "none", borderRadius: 14, padding: "14px 44px", fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: `0 10px 24px ${picked.color}44` }}>はじめる →</button>
+        <div style={{ animation: "hpPop .5s ease both", position: "relative", background: "linear-gradient(165deg,#FFFDF8,#F6EEDB)", border: "1px solid #D8C68F", borderRadius: 24, padding: "30px 24px 26px", boxShadow: "0 16px 40px rgba(90,70,20,.16)", maxWidth: 280 }}>
+          <span style={{ position: "absolute", top: 10, left: 14, fontSize: 15, color: GOLD }}>❧</span>
+          <span style={{ position: "absolute", top: 10, right: 14, fontSize: 15, color: GOLD, transform: "scaleX(-1)" }}>❧</span>
+          <div className="hp-hud" style={{ fontSize: 12, color: picked.textColor, letterSpacing: ".12em", marginBottom: 4 }}>YOUR FACTION</div>
+          <div style={{ fontSize: 56, color: picked.color, marginBottom: 4 }}>{picked.glyph}</div>
+          <div className="hp-disp" style={{ fontSize: 28, fontWeight: 900, color: picked.textColor }}>{picked.name}</div>
+          <div className="hp-hud" style={{ fontSize: 13, color: picked.textColor, marginTop: 2, marginBottom: 10 }}>{picked.code}</div>
+          {nickname.trim() && <div style={{ fontSize: 13, color: SUB, marginBottom: 18 }}>ようこそ、{nickname.trim()}さん</div>}
+          <div style={{ width: 34, height: 1, background: GOLD, margin: "0 auto 18px" }} />
+          <button onClick={() => onDone(picked)} className="hp-tap" style={{
+            background: picked.id === "schicksal" ? `linear-gradient(135deg,${BRONZE_GRADIENT_FROM},${BRONZE_GRADIENT_TO})` : `linear-gradient(135deg,${GOLD_GRADIENT_FROM},${GOLD_GRADIENT_TO})`,
+            color: picked.id === "schicksal" ? BRONZE_TEXT : "#fff",
+            border: "none", borderRadius: 14, padding: "14px 44px", fontSize: 15, fontWeight: 800, cursor: "pointer",
+            boxShadow: picked.id === "schicksal" ? `0 10px 24px rgba(61,44,21,.4)` : `0 10px 24px rgba(184,134,46,.38)`,
+          }}>はじめる →</button>
         </div>
       )}
     </div>
@@ -304,25 +317,25 @@ function Onboard({ onDone }) {
 function Home({ f, setScreen }) {
   const quick = [
     { id: "rally", label: "スタンプラリー", icon: "◉", desc: "あと3個でコンプ" },
-    { id: "quiz", label: "クイズに挑戦", icon: "❓", desc: "QRを読み取る" },
-    { id: "wallpaper", label: "限定壁紙", icon: "🖼", desc: "4種 配布中" },
+    { id: "quiz", label: "クイズに挑戦", icon: "?", desc: "QRを読み取る" },
+    { id: "wallpaper", label: "限定壁紙", icon: "❏", desc: "4種 配布中" },
   ];
   return (
     <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* 陣営カード */}
       <div style={{ background: f.tint, border: `1px solid ${f.color}33`, borderRadius: 18, padding: 16, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", right: -8, top: -10, fontSize: 88, opacity: .12, color: f.color }}>{f.glyph}</div>
-        <div className="hp-hud" style={{ fontSize: 10, color: f.color }}>{f.code}</div>
-        <div className="hp-disp" style={{ fontSize: 23, fontWeight: 900, color: f.color, margin: "2px 0 10px" }}>{f.name}</div>
+        <div className="hp-hud" style={{ fontSize: 10, color: f.textColor }}>{f.code}</div>
+        <div className="hp-disp" style={{ fontSize: 23, fontWeight: 900, color: f.textColor, margin: "2px 0 10px" }}>{f.name}</div>
         <div style={{ display: "flex", gap: 18 }}>
-          <Stat label="獲得スタンプ" value="5" unit="/8" color={f.color} />
-          <Stat label="貢献ポイント" value="120" unit="pt" color={f.color} />
+          <Stat label="獲得スタンプ" value="5" unit="/8" color={f.textColor} />
+          <Stat label="貢献ポイント" value="120" unit="pt" color={f.textColor} />
         </div>
       </div>
 
       {/* 限定壁紙バナー */}
       <div onClick={() => setScreen("wallpaper")} className="hp-tap" style={{ cursor: "pointer", borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, background: "linear-gradient(100deg,#FBEFD3,#FFF6E6)", border: `1px solid ${GOLD}33` }}>
-        <span style={{ fontSize: 26 }}>🎁</span>
+        <span style={{ fontSize: 26 }}>❊</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 800 }}>限定壁紙を配布中</div>
           <div style={{ fontSize: 12, color: SUB }}>来場特典の4種をダウンロード</div>
@@ -348,12 +361,12 @@ function Home({ f, setScreen }) {
       <div>
         <SectionTitle sub="タイムテーブルに合わせて通知が届きます">次の予定</SectionTitle>
         <Card style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
-          <div className="hp-hud" style={{ fontSize: 16, fontWeight: 800, color: f.color }}>12:30</div>
+          <div className="hp-hud" style={{ fontSize: 16, fontWeight: 800, color: f.textColor }}>12:30</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13.5, fontWeight: 700 }}>オープニングトーク</div>
             <div style={{ fontSize: 11.5, color: SUB }}>メインステージ</div>
           </div>
-          <Chip color={f.color} bg={f.tint}>まもなく</Chip>
+          <Chip color={f.textColor} bg={f.tint}>まもなく</Chip>
         </Card>
       </div>
     </div>
@@ -386,7 +399,7 @@ function Rally({ f }) {
       <Card style={{ padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: SUB }}>達成率</div>
-          <div><span className="hp-hud" style={{ fontSize: 26, fontWeight: 800, color: f.color }}>{count}</span><span style={{ color: SUB, fontSize: 14 }}> / {BOOTHS.length}</span></div>
+          <div><span className="hp-hud" style={{ fontSize: 26, fontWeight: 800, color: f.textColor }}>{count}</span><span style={{ color: SUB, fontSize: 14 }}> / {BOOTHS.length}</span></div>
         </div>
         <div style={{ height: 10, background: "#EEF1F7", borderRadius: 999, overflow: "hidden" }}>
           <div style={{ width: `${pct}%`, height: "100%", background: f.color, borderRadius: 999, transition: "width .5s" }} />
@@ -395,19 +408,19 @@ function Rally({ f }) {
       </Card>
 
       <button onClick={count === BOOTHS.length ? () => setReward(true) : scan} className="hp-tap"
-        style={{ border: "none", cursor: "pointer", borderRadius: 14, padding: "15px", fontSize: 15, fontWeight: 800, color: "#fff", background: count === BOOTHS.length ? GOLD : f.color, boxShadow: `0 8px 20px ${(count === BOOTHS.length ? GOLD : f.color)}40` }}>
-        {count === BOOTHS.length ? "🎉 特典コードを表示" : `📷 QRを読み取る（${next ? next.name : ""}）`}
+        style={{ border: "none", cursor: "pointer", borderRadius: 14, padding: "15px", fontSize: 15, fontWeight: 800, color: count === BOOTHS.length ? "#fff" : f.onColor, background: count === BOOTHS.length ? GOLD : f.color, boxShadow: `0 8px 20px ${(count === BOOTHS.length ? GOLD : f.color)}40` }}>
+        {count === BOOTHS.length ? "❊ 特典コードを表示" : `✵ QRを読み取る（${next ? next.name : ""}）`}
       </button>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {BOOTHS.map((b) => {
           const got = collected[b.id];
           return (
-            <div key={b.id} style={{ background: got ? f.tint : PANEL, border: `1.5px solid ${got ? f.color : LINE}`, borderRadius: 14, padding: "13px 12px", display: "flex", alignItems: "center", gap: 10, animation: got ? "hpPop .3s ease both" : "none" }}>
+            <div key={b.id} style={{ background: got ? f.tint : PANEL, border: `1.5px solid ${got ? f.textColor : LINE}`, borderRadius: 14, padding: "13px 12px", display: "flex", alignItems: "center", gap: 10, animation: got ? "hpPop .3s ease both" : "none" }}>
               <span style={{ fontSize: 22, filter: got ? "none" : "grayscale(1) opacity(.5)" }}>{b.icon}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: got ? INK : SUB }}>{b.name}</div>
-                <div className="hp-hud" style={{ fontSize: 9.5, color: got ? f.color : "#AEB6C4" }}>{got ? "STAMPED" : "未取得"}</div>
+                <div className="hp-hud" style={{ fontSize: 9.5, color: got ? f.textColor : "#AEB6C4" }}>{got ? "STAMPED" : "未取得"}</div>
               </div>
             </div>
           );
@@ -416,10 +429,10 @@ function Rally({ f }) {
 
       {reward && (
         <Modal onClose={() => setReward(false)}>
-          <div style={{ fontSize: 40, marginBottom: 6 }}>🎁</div>
+          <div style={{ fontSize: 40, marginBottom: 6 }}>❊</div>
           <div className="hp-disp" style={{ fontSize: 19, fontWeight: 800 }}>コンプリート特典</div>
           <div style={{ fontSize: 12.5, color: SUB, margin: "6px 0 16px" }}>受付でこのコードを提示してアイテムと交換できます。</div>
-          <div className="hp-hud" style={{ fontSize: 26, fontWeight: 800, letterSpacing: ".18em", color: f.color, background: f.tint, border: `1px dashed ${f.color}`, borderRadius: 12, padding: "14px 0" }}>HX-7K2D</div>
+          <div className="hp-hud" style={{ fontSize: 26, fontWeight: 800, letterSpacing: ".18em", color: f.textColor, background: f.tint, border: `1px dashed ${f.textColor}`, borderRadius: 12, padding: "14px 0" }}>HX-7K2D</div>
         </Modal>
       )}
     </div>
@@ -434,10 +447,10 @@ function MapScreen({ f }) {
         <div style={{ height: 230, background: "linear-gradient(135deg,#EAF1FB,#F3ECFB)", position: "relative" }}>
           {/* 簡易マップ図 */}
           {[
-            { x: 18, y: 24, n: "受付", c: FACTIONS.azure.color },
-            { x: 60, y: 20, n: "ステージ", c: FACTIONS.crimson.color },
+            { x: 18, y: 24, n: "受付", c: FACTIONS.negentropy.color },
+            { x: 60, y: 20, n: "ステージ", c: FACTIONS.schicksal.color },
             { x: 30, y: 60, n: "物販", c: GOLD },
-            { x: 70, y: 64, n: "撮影", c: FACTIONS.violet.color },
+            { x: 70, y: 64, n: "撮影", c: FACTIONS.jormungandr.color },
             { x: 48, y: 44, n: "広場", c: "#4AA06B" },
           ].map((p, i) => (
             <div key={i} style={{ position: "absolute", left: `${p.x}%`, top: `${p.y}%`, transform: "translate(-50%,-50%)", textAlign: "center" }}>
@@ -451,7 +464,7 @@ function MapScreen({ f }) {
           <div style={{ fontSize: 12, color: SUB, marginTop: 3 }}>各ブースの位置を確認できます。</div>
         </div>
       </Card>
-      <button className="hp-tap" style={{ border: `1px solid ${f.color}`, background: f.tint, color: f.color, borderRadius: 12, padding: "13px", fontSize: 13.5, fontWeight: 800, cursor: "pointer" }}>
+      <button className="hp-tap" style={{ border: `1px solid ${f.textColor}`, background: f.tint, color: f.textColor, borderRadius: 12, padding: "13px", fontSize: 13.5, fontWeight: 800, cursor: "pointer" }}>
         詳細マップを外部サイトで開く ↗
       </button>
     </div>
@@ -461,12 +474,12 @@ function MapScreen({ f }) {
 // ===================== メニュー =====================
 function Menu({ f, setScreen, setFaction }) {
   const items = [
-    { id: "quiz", label: "クイズ", desc: "QRから回答と解説", icon: "❓" },
-    { id: "frame", label: "フォトフレーム", desc: "オリジナル枠で記念撮影", icon: "📸" },
-    { id: "board", label: "掲示板", desc: "来場者どうしで交流", icon: "💬" },
-    { id: "exhibitors", label: "出展者プロフィール", desc: "グッズ出展者の紹介", icon: "🏷️" },
-    { id: "schedule", label: "タイムテーブル", desc: "予定と通知設定", icon: "🗓️" },
-    { id: "wallpaper", label: "限定壁紙", desc: "来場特典のDL", icon: "🖼️" },
+    { id: "quiz", label: "クイズ", desc: "QRから回答と解説", icon: "?" },
+    { id: "frame", label: "フォトフレーム", desc: "オリジナル枠で記念撮影", icon: "❋" },
+    { id: "board", label: "掲示板", desc: "来場者どうしで交流", icon: "❝" },
+    { id: "exhibitors", label: "出展者プロフィール", desc: "グッズ出展者の紹介", icon: "◈" },
+    { id: "schedule", label: "タイムテーブル", desc: "予定と通知設定", icon: "◷" },
+    { id: "wallpaper", label: "限定壁紙", desc: "来場特典のDL", icon: "❏" },
   ];
   return (
     <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -495,12 +508,12 @@ function Quiz({ f }) {
   if (stage === "scan") {
     return (
       <div className="hp-screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center", padding: 10 }}>
-        <div style={{ width: 200, height: 200, borderRadius: 22, border: `2px dashed ${f.color}`, background: f.tint, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
-          <span style={{ fontSize: 64, animation: "hpScan 1.4s ease-in-out infinite" }}>🔳</span>
+        <div style={{ width: 200, height: 200, borderRadius: 22, border: `2px dashed ${f.textColor}`, background: f.tint, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
+          <span style={{ fontSize: 64, animation: "hpScan 1.4s ease-in-out infinite" }}>✵</span>
         </div>
         <div style={{ fontSize: 14, fontWeight: 800 }}>会場のQRコードを読み取り</div>
         <div style={{ fontSize: 12, color: SUB, margin: "5px 0 18px" }}>問題パネルのコードをスキャンしてください</div>
-        <button onClick={() => setStage("q")} className="hp-tap" style={{ border: "none", cursor: "pointer", background: f.color, color: "#fff", borderRadius: 12, padding: "13px 34px", fontSize: 14, fontWeight: 800 }}>スキャンする（デモ）</button>
+        <button onClick={() => setStage("q")} className="hp-tap" style={{ border: "none", cursor: "pointer", background: f.color, color: f.onColor, borderRadius: 12, padding: "13px 34px", fontSize: 14, fontWeight: 800 }}>スキャンする（デモ）</button>
       </div>
     );
   }
@@ -508,7 +521,7 @@ function Quiz({ f }) {
   return (
     <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Card style={{ padding: 16 }}>
-        <Chip color={f.color} bg={f.tint}>QUIZ #01</Chip>
+        <Chip color={f.textColor} bg={f.tint}>QUIZ #01</Chip>
         <div className="hp-disp" style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.55, marginTop: 10 }}>{QUIZ.q}</div>
       </Card>
       <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
@@ -531,7 +544,7 @@ function Quiz({ f }) {
       </div>
       {stage === "result" && (
         <Card style={{ padding: 14, background: f.tint, border: `1px solid ${f.color}33`, animation: "hpUp .3s ease both" }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, color: f.color, marginBottom: 4 }}>解説</div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: f.textColor, marginBottom: 4 }}>解説</div>
           <div style={{ fontSize: 12.5, color: INK, lineHeight: 1.7 }}>{QUIZ.explain}</div>
         </Card>
       )}
@@ -561,7 +574,7 @@ function Frame({ f }) {
           </button>
         ))}
       </div>
-      <button onClick={() => setCaptured(true)} className="hp-tap" style={{ border: "none", cursor: "pointer", background: f.color, color: "#fff", borderRadius: 13, padding: "14px", fontSize: 14.5, fontWeight: 800 }}>📷 撮影する</button>
+      <button onClick={() => setCaptured(true)} className="hp-tap" style={{ border: "none", cursor: "pointer", background: f.color, color: f.onColor, borderRadius: 13, padding: "14px", fontSize: 14.5, fontWeight: 800 }}>✦ 撮影する</button>
 
       {captured && (
         <Modal onClose={() => setCaptured(false)}>
@@ -590,16 +603,16 @@ function Board({ f }) {
       <Card style={{ padding: 10, display: "flex", gap: 8 }}>
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder="ひとことを投稿…"
           style={{ flex: 1, border: `1px solid ${LINE}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, outline: "none", background: "#F8FAFD", color: INK }} />
-        <button onClick={add} className="hp-tap" style={{ border: "none", cursor: "pointer", background: f.color, color: "#fff", borderRadius: 10, padding: "0 16px", fontSize: 13, fontWeight: 800 }}>投稿</button>
+        <button onClick={add} className="hp-tap" style={{ border: "none", cursor: "pointer", background: f.color, color: f.onColor, borderRadius: 10, padding: "0 16px", fontSize: 13, fontWeight: 800 }}>投稿</button>
       </Card>
       {posts.map((p) => {
-        const pf = FACTIONS[p.faction] || FACTIONS.azure;
+        const pf = FACTIONS[p.faction] || FACTIONS.negentropy;
         return (
           <Card key={p.id} style={{ padding: 13, borderLeft: `4px solid ${pf.color}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
-              <span style={{ color: pf.color }}>{pf.glyph}</span>
+              <span style={{ color: pf.textColor }}>{pf.glyph}</span>
               <span style={{ fontSize: 12.5, fontWeight: 800 }}>{p.who}</span>
-              <Chip color={pf.color} bg={pf.tint}>{pf.name}</Chip>
+              <Chip color={pf.textColor} bg={pf.tint}>{pf.name}</Chip>
             </div>
             <div style={{ fontSize: 13, color: INK, lineHeight: 1.6 }}>{p.body}</div>
           </Card>
@@ -633,10 +646,10 @@ function Schedule({ f }) {
   const [on, setOn] = useState({ 1: true });
   return (
     <div className="hp-screen" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ fontSize: 12, color: SUB, marginBottom: 2 }}>🔔をオンにすると開始前に通知が届きます。</div>
+      <div style={{ fontSize: 12, color: SUB, marginBottom: 2 }}>◷をオンにすると開始前に通知が届きます。</div>
       {SCHEDULE.map((s, i) => (
         <Card key={i} style={{ padding: 13, display: "flex", alignItems: "center", gap: 13, borderColor: s.soon ? `${f.color}55` : LINE }}>
-          <div className="hp-hud" style={{ fontSize: 15, fontWeight: 800, color: s.soon ? f.color : INK, width: 46 }}>{s.t}</div>
+          <div className="hp-hud" style={{ fontSize: 15, fontWeight: 800, color: s.soon ? f.textColor : INK, width: 46 }}>{s.t}</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13.5, fontWeight: 700 }}>{s.title}</div>
             <div style={{ fontSize: 11.5, color: SUB }}>{s.spot}</div>
@@ -663,7 +676,7 @@ function Wallpaper({ f }) {
             </div>
             <div style={{ padding: "9px 11px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 11.5, fontWeight: 700 }}>{w.label}</span>
-              <span style={{ color: f.color, fontSize: 15 }}>⤓</span>
+              <span style={{ color: f.textColor, fontSize: 15 }}>⤓</span>
             </div>
           </div>
         ))}
@@ -675,10 +688,12 @@ function Wallpaper({ f }) {
 // ------- モーダル -------
 function Modal({ children, onClose }) {
   return (
-    <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(27,34,48,.32)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 60 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 20, padding: 24, textAlign: "center", width: "100%", maxWidth: 300, animation: "hpPop .3s ease both", boxShadow: "0 20px 50px rgba(0,0,0,.25)" }}>
+    <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,36,28,.36)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 60 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", background: "linear-gradient(165deg,#FFFDF8,#F6EEDB)", border: "1px solid #D8C68F", borderRadius: 20, padding: 24, textAlign: "center", width: "100%", maxWidth: 300, animation: "hpPop .3s ease both", boxShadow: "0 20px 50px rgba(60,45,10,.28)" }}>
+        <span style={{ position: "absolute", top: 10, left: 14, fontSize: 14, color: GOLD }}>❧</span>
+        <span style={{ position: "absolute", top: 10, right: 14, fontSize: 14, color: GOLD, transform: "scaleX(-1)" }}>❧</span>
         {children}
-        <button onClick={onClose} style={{ marginTop: 18, border: "none", background: "#F1F4FA", color: SUB, borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>閉じる</button>
+        <button onClick={onClose} style={{ marginTop: 18, border: "none", background: "#F1EADA", color: SUB, borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>閉じる</button>
       </div>
     </div>
   );
